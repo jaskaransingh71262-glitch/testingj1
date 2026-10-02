@@ -4,7 +4,7 @@ import { ContactShadows, Environment, OrbitControls, useGLTF } from "@react-thre
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { create } from "zustand";
-import "./enterprise.css";
+import "../enterprise.css";
 
 gsap.registerPlugin(ScrollTrigger);
 
