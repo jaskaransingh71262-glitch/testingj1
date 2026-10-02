@@ -35,7 +35,7 @@ function Car({ paint }) {
   });
 
   return (
-    <group ref={group} position={[0, -0.85, 0]} scale={1.65}>
+    <group ref={group} position={[0, -0.72, 0]} scale={2.55}>
       <Clone object={scene} castShadow receiveShadow />
     </group>
   );
@@ -127,7 +127,7 @@ function App() {
           </div>
 
           <div className="stage">
-            <Canvas
+            <Canvas camera={{ position: [0, 0.25, 4.1], fov: 38 }}
               shadows
               camera={{ position: [5, 2.6, 6], fov: 38 }}
               dpr={[1, 1.6]}
@@ -142,7 +142,7 @@ function App() {
                 <Environment preset={dark ? "night" : "city"} />
               </Suspense>
 
-              <OrbitControls enableZoom={false} enablePan={false} />
+              <OrbitControls minDistance={2.5} maxDistance={6} target={[0, -0.25, 0]} enableZoom={false} enablePan={false} />
             </Canvas>
 
             <div className="panel">
