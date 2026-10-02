@@ -1,21 +1,21 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { ContactShadows, Environment, Float, OrbitControls, useGLTF } from "@react-three/drei";
+import { ContactShadows, Environment, OrbitControls, useGLTF } from "@react-three/drei";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { create } from "zustand";
+import "./enterprise.css";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const BMW_MODEL_URL = "https://raw.githubusercontent.com/coopercodes/bmwGLB/main/bmw_m4_competition_m_package.glb";
 
-const model = {
-  name: "BMW M4 Competition",
-  type: "M4 · M Package",
-  price: "$89,900",
-  power: "503 HP",
-  zero: "3.4 s",
-  top: "155 MPH",
-};
+const useSceneStore = create((set) => ({
+  paint: "#c7c9ce",
+  hotspot: "Powertrain",
+  setPaint: (paint) => set({ paint }),
+  setHotspot: (hotspot) => set({ hotspot }),
+}));
 
 const offices = [
   { city: "London", lat: 51.5, lon: -0.1, metric: "42 projects" },
@@ -28,26 +28,23 @@ const offices = [
 function latLon(lat, lon, radius = 2.05) {
   const phi = (90 - lat) * Math.PI / 180;
   const theta = (lon + 180) * Math.PI / 180;
-  return [
-    -radius * Math.sin(phi) * Math.cos(theta),
-    radius * Math.cos(phi),
-    radius * Math.sin(phi) * Math.sin(theta),
-  ];
+  return [-radius * Math.sin(phi) * Math.cos(theta), radius * Math.cos(phi), radius * Math.sin(phi) * Math.sin(theta)];
 }
 
-function Car({ paint, detail }) {
+function BMW({ exploded = false }) {
   const { scene } = useGLTF(BMW_MODEL_URL);
   const group = useRef();
+  const paint = useSceneStore((s) => s.paint);
 
   useEffect(() => {
-    scene.traverse((object) => {
-      if (!object.isMesh) return;
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
-      materials.forEach((material) => {
-        if (material?.color && (material.name === "White" || material.name === "white")) {
-          material.color.set(paint);
-          material.metalness = 0.8;
-          material.roughness = 0.18;
+    scene.traverse((o) => {
+      if (!o.isMesh) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      mats.forEach((m) => {
+        if (m?.color && /white/i.test(m.name || "")) {
+          m.color.set(paint);
+          m.metalness = 0.8;
+          m.roughness = 0.18;
         }
       });
     });
@@ -55,223 +52,172 @@ function Car({ paint, detail }) {
 
   useFrame((state, delta) => {
     if (!group.current) return;
-    group.current.rotation.y += (0.12 - group.current.rotation.y) * delta;
-    group.current.position.y = -0.72 + Math.sin(state.clock.elapsedTime * 1.1) * 0.025;
+    group.current.rotation.y += (0.10 - group.current.rotation.y) * delta;
+    group.current.position.y = -0.7 + Math.sin(state.clock.elapsedTime * 0.8) * 0.018;
   });
 
   return (
-    <group ref={group} scale={detail ? 2.55 : 2.2}>
-      <group ref={group} position={[0, -0.72, 0]}>
-        <primitive object={scene} castShadow receiveShadow />
-      </group>
+    <group ref={group} position={[0, 0, 0]} scale={exploded ? 2.45 : 2.65}>
+      <primitive object={scene} castShadow receiveShadow />
     </group>
   );
 }
 
-function Showroom3D({ paint, dark, reducedMotion }) {
-  const group = useRef();
+function BMWScene({ scrollProgress = 0, reducedMotion = false }) {
+  const root = useRef();
+  const target = useRef(0);
 
-  useFrame(({ pointer }) => {
-    if (!group.current || reducedMotion) return;
-    group.current.rotation.x += (pointer.y * 0.08 - group.current.rotation.x) * 0.035;
-    group.current.rotation.z += (-pointer.x * 0.045 - group.current.rotation.z) * 0.035;
+  useFrame(({ pointer }, delta) => {
+    if (!root.current) return;
+    const mouseX = reducedMotion ? 0 : pointer.x * 0.07;
+    const mouseY = reducedMotion ? 0 : pointer.y * 0.045;
+    target.current += ((scrollProgress * 0.45) - target.current) * Math.min(1, delta * 2.5);
+    root.current.rotation.y += (target.current + mouseX - root.current.rotation.y) * 0.04;
+    root.current.rotation.x += (mouseY - root.current.rotation.x) * 0.04;
+    root.current.position.z = -scrollProgress * 0.45;
   });
 
-  return (
-    <group ref={group}>
-      <Float speed={1} rotationIntensity={0.035} floatIntensity={0.08}>
-        <Car paint={paint} detail />
-      </Float>
-    </group>
-  );
+  return <group ref={root}><BMW exploded={scrollProgress > 0.58} /></group>;
 }
 
 function Globe({ dark }) {
   const globe = useRef();
-  const points = useMemo(() => offices.map((office) => latLon(office.lat, office.lon)), []);
-
-  useFrame((_, delta) => {
-    if (globe.current) globe.current.rotation.y += delta * 0.08;
-  });
-
+  const points = useMemo(() => offices.map((o) => latLon(o.lat, o.lon)), []);
+  useFrame((_, delta) => { if (globe.current) globe.current.rotation.y += delta * 0.07; });
   return (
     <group ref={globe}>
-      <mesh>
-        <sphereGeometry args={[2, 48, 48]} />
-        <meshStandardMaterial color={dark ? "#10131a" : "#e8edf3"} metalness={0.25} roughness={0.65} wireframe />
-      </mesh>
-      {points.map((position, index) => (
-        <mesh key={offices[index].city} position={position}>
-          <sphereGeometry args={[0.075, 12, 12]} />
-          <meshStandardMaterial color="#8f7cff" emissive="#5e4cff" emissiveIntensity={2} />
-        </mesh>
-      ))}
+      <mesh><sphereGeometry args={[2, 48, 48]} /><meshStandardMaterial color={dark ? "#0c1018" : "#e6ebf1"} wireframe roughness={0.7} /></mesh>
+      {points.map((p, i) => <mesh key={offices[i].city} position={p}><sphereGeometry args={[0.075, 12, 12]} /><meshStandardMaterial color="#8b7cff" emissive="#5c4dff" emissiveIntensity={2} /></mesh>)}
     </group>
   );
 }
 
 function App() {
   const [dark, setDark] = useState(true);
-  const [paint, setPaint] = useState("#c7c9ce");
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [hotspot, setHotspot] = useState("Powertrain");
+  const [scrollProgress, setScrollProgress] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const heroRef = useRef(null);
+  const setPaint = useSceneStore((s) => s.setPaint);
+  const paint = useSceneStore((s) => s.paint);
+  const hotspot = useSceneStore((s) => s.hotspot);
+  const setHotspot = useSceneStore((s) => s.setHotspot);
 
   useEffect(() => {
-    document.title = "Apex Motors — Enterprise 3D Experience";
-    const ctx = gsap.context(() => {
-      gsap.from(".reveal", { y: 35, opacity: 0, duration: 0.9, stagger: 0.08, ease: "power3.out" });
-      gsap.utils.toArray(".section").forEach((section) => {
-        gsap.from(section.querySelectorAll(".animate-in"), {
-          scrollTrigger: { trigger: section, start: "top 78%" },
-          y: 45, opacity: 0, duration: 0.8, stagger: 0.08, ease: "power3.out"
-        });
-      });
-    }, heroRef);
-    return () => ctx.revert();
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReducedMotion(media.matches);
+    const onChange = () => setReducedMotion(media.matches);
+    media.addEventListener?.("change", onChange);
+    return () => media.removeEventListener?.("change", onChange);
   }, []);
 
+  useEffect(() => {
+    document.title = "Apex Enterprise 3D — Product Intelligence";
+    const ctx = gsap.context(() => {
+      if (!reducedMotion) {
+        gsap.from(".reveal", { y: 28, opacity: 0, duration: .7, stagger: .07, ease: "power3.out" });
+        gsap.utils.toArray(".story-step").forEach((el) => gsap.from(el, {
+          scrollTrigger: { trigger: el, start: "top 72%", end: "bottom 30%", toggleActions: "play reverse play reverse" },
+          y: 24, opacity: 0, duration: .55, ease: "power2.out"
+        }));
+      }
+    }, heroRef);
+    return () => ctx.revert();
+  }, [reducedMotion]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      setScrollProgress(window.scrollY / max);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const storyProgress = Math.min(1, Math.max(0, scrollProgress * 3));
+
   return (
-    <div className={dark ? "app theme-dark" : "app theme-light"} ref={heroRef}>
-      <header className="nav">
-        <a className="brand" href="#top" aria-label="Apex Motors home">
-          <span className="brand-mark">A</span>
-          APEX / DIGITAL
-        </a>
-        <nav className="nav-links" aria-label="Main navigation">
-          <a href="#explorer">EXPLORER</a>
-          <a href="#global">GLOBAL</a>
-          <a href="#cases">CASES</a>
-          <a href="#contact">CONTACT</a>
-        </nav>
-        <button className="theme-toggle" onClick={() => setDark((v) => !v)} aria-label="Toggle theme">
-          {dark ? "LIGHT" : "DARK"}
-        </button>
+    <div className={dark ? "enterprise dark" : "enterprise light"} ref={heroRef}>
+      <header className="enterprise-nav">
+        <a className="wordmark" href="#top"><span>A</span> APEX ENTERPRISE</a>
+        <nav aria-label="Primary"><a href="#product">PRODUCT</a><a href="#global">GLOBAL</a><a href="#trust">TRUST</a><a href="#cases">CASES</a></nav>
+        <button className="theme-btn" onClick={() => setDark((v) => !v)}>{dark ? "LIGHT" : "DARK"}</button>
       </header>
 
-      <main id="top">
-        <section className="hero section">
-          <div className="hero-copy">
-            <p className="eyebrow reveal">ENTERPRISE 3D EXPERIENCE</p>
-            <h1 className="reveal">Make complex products <span>understandable.</span></h1>
-            <p className="lead reveal">A premium digital platform where interactive 3D helps customers explore, compare and decide — without getting in the way.</p>
-            <div className="actions reveal">
-              <a className="primary" href="#explorer">Explore the product ↗</a>
-              <a className="secondary" href="#contact">Book a demo</a>
-            </div>
-            <div className="metric-row reveal">
-              <div><b>60 FPS</b><small>PERFORMANCE TARGET</small></div>
-              <div><b>5</b><small>GLOBAL OFFICES</small></div>
-              <div><b>AA</b><small>ACCESSIBILITY</small></div>
-            </div>
-          </div>
+      <aside className="progress" aria-label="Page progress"><span style={{ height: Math.max(8, scrollProgress * 100) + "%" }} /><small>01—05</small></aside>
 
-          <div className="hero-stage" aria-label="Interactive 3D BMW product viewer">
-            <Canvas camera={{ position: [0, 0.15, 4.15], fov: 38 }} shadows dpr={[1, 1.5]}>
-              <ambientLight intensity={dark ? 0.32 : 0.72} />
-              <directionalLight position={[4, 6, 3]} intensity={dark ? 3 : 4} castShadow />
-              <pointLight position={[-4, 2, -3]} intensity={dark ? 4 : 2} color="#8272ff" />
-              <Suspense fallback={null}>
-                <Showroom3D paint={paint} dark={dark} reducedMotion={reducedMotion} />
-                <ContactShadows position={[0, -0.15, 0]} opacity={0.42} scale={8} blur={2} />
-                <Environment preset={dark ? "night" : "city"} />
-              </Suspense>
-              <OrbitControls minDistance={2.5} maxDistance={5.5} target={[0, -0.25, 0]} enablePan={false} />
+      <main id="top">
+        <section className="enterprise-hero">
+          <div className="hero-copy">
+            <p className="kicker reveal">PRODUCT INTELLIGENCE / ENTERPRISE 3D</p>
+            <h1 className="reveal">Complex products.<br /><em>Clear decisions.</em></h1>
+            <p className="hero-lead reveal">A credible digital experience for CTOs, procurement teams and partners — where 3D demonstrates the product instead of distracting from it.</p>
+            <div className="cta-row reveal"><a className="cta primary" href="#contact">Book demo</a><a className="cta secondary" href="#product">Explore product</a></div>
+            <div className="hero-trust reveal"><span>SECURE BY DESIGN</span><span>WCAG 2.1 AA</span><span>PERFORMANCE LED</span></div>
+          </div>
+          <div className="hero-canvas" aria-label="Interactive BMW M4 3D product scene">
+            <Canvas camera={{ position: [0, .1, 4.2], fov: 38 }} dpr={[1, 1.5]} shadows>
+              <ambientLight intensity={dark ? .3 : .7}/><directionalLight position={[4,6,3]} intensity={dark ? 2.8 : 4} castShadow/><pointLight position={[-4,2,-3]} intensity={dark ? 3.5 : 2} color="#8b7cff"/>
+              <Suspense fallback={null}><Environment preset={dark ? "night" : "city"}/><BMWScene scrollProgress={storyProgress} reducedMotion={reducedMotion}/><ContactShadows position={[0,-.2,0]} opacity={.4} scale={8} blur={2}/></Suspense>
+              <OrbitControls target={[0,-.2,0]} minDistance={2.6} maxDistance={5.5} enablePan={false}/>
             </Canvas>
-            <div className="stage-label">BMW M4 / INTERACTIVE PRODUCT VIEW</div>
-            <div className="stage-control">
-              <button onClick={() => setReducedMotion((v) => !v)}>{reducedMotion ? "MOTION OFF" : "MOTION ON"}</button>
-            </div>
+            <div className="scene-caption">BMW M4 / PRODUCT VIEW / SCROLL TO ANALYZE</div>
           </div>
         </section>
 
-        <section className="section explorer" id="explorer">
-          <div className="section-intro animate-in">
-            <p className="eyebrow">PRODUCT EXPLORER</p>
-            <h2>Inspect what matters.</h2>
-            <p>Rotate the model, zoom into the product and use focused hotspots to understand the engineering behind it.</p>
-          </div>
-          <div className="explorer-grid">
-            <div className="explorer-stage animate-in">
-              <Canvas camera={{ position: [0, 0.2, 4.5], fov: 42 }} dpr={[1, 1.4]}>
-                <ambientLight intensity={0.55} />
-                <directionalLight position={[4, 5, 4]} intensity={3} />
-                <Suspense fallback={null}><Showroom3D paint={paint} dark={dark} reducedMotion={reducedMotion} /></Suspense>
-                <OrbitControls target={[0, -0.25, 0]} enablePan={false} />
+        <section className="story" id="product">
+          <div className="story-sticky">
+            <div className="story-canvas">
+              <Canvas camera={{ position: [0,.15,4.4], fov: 40 }} dpr={[1,1.4]}>
+                <ambientLight intensity={.5}/><directionalLight position={[4,5,4]} intensity={3}/><Suspense fallback={null}><Environment preset="studio"/><BMWScene scrollProgress={storyProgress} reducedMotion={reducedMotion}/></Suspense><OrbitControls target={[0,-.2,0]} enablePan={false}/>
               </Canvas>
             </div>
-            <div className="hotspots animate-in">
-              {["Powertrain", "Aerodynamics", "Cockpit"].map((item, i) => (
-                <button key={item} className={hotspot === item ? "hotspot active" : "hotspot"} onClick={() => setHotspot(item)}>
-                  <span>0{i + 1}</span><b>{item}</b><small>{item === "Powertrain" ? "503 HP twin-turbo performance" : item === "Aerodynamics" ? "Airflow-led exterior design" : "Driver-focused digital controls"}</small>
-                </button>
-              ))}
-              <div className="material-box">
-                <span>FINISH</span>
-                <div className="swatches">
-                  {["#c7c9ce", "#15171b", "#5c6b9b", "#a52d37", "#e4e4df"].map((color) => (
-                    <button key={color} className={paint === color ? "swatch active" : "swatch"} style={{ background: color }} onClick={() => setPaint(color)} aria-label={"Select paint " + color} />
-                  ))}
-                </div>
-              </div>
+            <div className="story-stage-label">SCROLL-DRIVEN PRODUCT STORY</div>
+          </div>
+          <div className="story-copy">
+            <article className="story-step"><span>01 / ORIENTATION</span><h2>See the product before you commit.</h2><p>HTML content remains visible to search engines and assistive technology while the model gives teams an immediate spatial reference.</p></article>
+            <article className="story-step"><span>02 / ENGINEERING</span><h2>Reveal the systems that matter.</h2><p>The scene responds to scroll progress so the experience can move from exterior context toward engineering detail without a sudden animation.</p></article>
+            <article className="story-step"><span>03 / DECISION</span><h2>Turn interaction into evidence.</h2><p>Hotspots, specifications and configuration controls answer the questions that normally require a sales call.</p></article>
+          </div>
+        </section>
+
+        <section className="section product-explorer">
+          <div className="section-heading"><span>PRODUCT EXPLORER</span><h2>Inspect. Configure. Decide.</h2></div>
+          <div className="explorer-grid">
+            <div className="explorer-view"><Canvas camera={{position:[0,.15,4.5],fov:42}} dpr={[1,1.4]}><ambientLight intensity={.5}/><directionalLight position={[4,5,4]} intensity={3}/><Suspense fallback={null}><Environment preset="studio"/><BMWScene reducedMotion={reducedMotion}/></Suspense><OrbitControls target={[0,-.2,0]} /></Canvas></div>
+            <div className="explorer-controls">
+              {["Powertrain","Aerodynamics","Cockpit"].map((item,i)=><button className={hotspot===item?"hotspot active":"hotspot"} key={item} onClick={()=>setHotspot(item)}><span>0{i+1}</span><b>{item}</b><small>{item==="Powertrain"?"503 HP performance architecture":item==="Aerodynamics"?"Airflow-led exterior design":"Driver-focused digital interface"}</small></button>)}
+              <div className="variant"><span>VARIANT / FINISH</span><div>{["#c7c9ce","#17191d","#6473a8","#a52d37","#e2e2df"].map(c=><button className={paint===c?"paint active":"paint"} style={{background:c}} key={c} onClick={()=>setPaint(c)} aria-label={"Choose finish "+c}/>)}</div></div>
             </div>
           </div>
         </section>
 
         <section className="section global" id="global">
-          <div className="section-intro animate-in">
-            <p className="eyebrow">GLOBAL NETWORK</p>
-            <h2>One platform. Global reach.</h2>
-            <p>Live-style operational data can sit beside the 3D story, giving decision-makers context instead of visual noise.</p>
-          </div>
-          <div className="global-grid">
-            <div className="globe-stage animate-in">
-              <Canvas camera={{ position: [0, 0, 5.2], fov: 42 }}>
-                <ambientLight intensity={0.5} />
-                <pointLight position={[4, 4, 4]} intensity={3} color="#8272ff" />
-                <Globe dark={dark} />
-              </Canvas>
-            </div>
-            <div className="office-list animate-in">
-              {offices.map((office) => (
-                <div className="office" key={office.city}><span>{office.city}</span><b>{office.metric}</b></div>
-              ))}
-              <div className="live-metric"><small>PLATFORM STATUS</small><strong>99.98%</strong><span>service availability · rolling 30 days</span></div>
-            </div>
-          </div>
+          <div className="section-heading"><span>GLOBAL PRESENCE</span><h2>Operational context, in one view.</h2></div>
+          <div className="global-grid"><div className="globe"><Canvas camera={{position:[0,0,5.3],fov:42}}><ambientLight intensity={.5}/><pointLight position={[4,4,4]} intensity={3} color="#8b7cff"/><Globe dark={dark}/></Canvas></div><div className="data-panel">{offices.map(o=><div className="office" key={o.city}><span>{o.city}</span><b>{o.metric}</b></div>)}<div className="live"><small>PLATFORM AVAILABILITY</small><strong>99.98%</strong><span>rolling 30-day view</span></div></div></div>
+        </section>
+
+        <section className="section trust" id="trust">
+          <div className="section-heading"><span>TRUST CENTER</span><h2>Enterprise credibility, visible.</h2></div>
+          <div className="trust-grid"><div className="trust-card"><strong>ISO 27001</strong><span>Information security framework</span></div><div className="trust-card"><strong>SOC 2</strong><span>Security and availability controls</span></div><div className="trust-card"><strong>SSO / OAUTH</strong><span>Enterprise identity integration</span></div><div className="trust-card"><strong>WAF + CSP</strong><span>Modern application protection</span></div></div>
+          <div className="logos" aria-label="Client logo placeholders"><span>CLIENT / A</span><span>CLIENT / B</span><span>PARTNER / C</span><span>PARTNER / D</span></div>
         </section>
 
         <section className="section cases" id="cases">
-          <div className="section-intro animate-in">
-            <p className="eyebrow">CASE STUDIES</p>
-            <h2>Depth where it earns its place.</h2>
-          </div>
-          <div className="case-grid">
-            <article className="case-card case-a animate-in"><span>01 / PRODUCT</span><h3>Turn configuration into confidence.</h3><p>Interactive product visualization reduces the gap between technical detail and purchase intent.</p></article>
-            <article className="case-card case-b animate-in"><span>02 / DATA</span><h3>Give global operations a spatial story.</h3><p>3D geography creates an intuitive layer for offices, performance and regional metrics.</p></article>
-            <article className="case-card case-c animate-in"><span>03 / BRAND</span><h3>Make the experience memorable.</h3><p>Motion and depth become storytelling tools instead of decoration.</p></article>
-          </div>
+          <div className="section-heading"><span>CASE STUDIES</span><h2>3D with a measurable job.</h2></div>
+          <div className="case-grid"><a href="#contact" className="case"><span>01 / PRODUCT</span><h3>Configuration without the guesswork.</h3><p>Show variants, materials and engineering context before a buyer talks to sales.</p><b>Read case →</b></a><a href="#contact" className="case"><span>02 / DATA</span><h3>Global operations with spatial context.</h3><p>Put locations, capacity and service metrics into a single visual system.</p><b>Read case →</b></a><a href="#contact" className="case"><span>03 / PARTNERS</span><h3>A digital layer for technical sales.</h3><p>Give partners a fast, consistent way to demonstrate complex systems.</p><b>Read case →</b></a></div>
         </section>
 
         <section className="section contact" id="contact">
-          <div className="contact-copy animate-in">
-            <p className="eyebrow">CONTACT / DEMO</p>
-            <h2>Build a 3D experience with a job to do.</h2>
-            <p>Tell us what customers need to understand, compare or configure. We will map the interaction before adding the polygons.</p>
-          </div>
-          <form className="contact-form animate-in" onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }}>
-            <label>Name<input required name="name" placeholder="Your name" /></label>
-            <label>Work email<input required type="email" name="email" placeholder="you@company.com" /></label>
-            <label>What are you building?<textarea required name="message" rows="4" placeholder="Product explorer, data platform, digital twin..." /></label>
-            <button className="primary" type="submit">{submitted ? "REQUEST RECEIVED ✓" : "Request a demo →"}</button>
-          </form>
+          <div><span className="kicker">CONTACT SALES</span><h2>Make your product easier to understand.</h2><p>Tell us what customers need to explain, compare or configure. The first step is an interaction plan, not a 3D model.</p></div>
+          <form onSubmit={(e)=>{e.preventDefault();setSubmitted(true)}}><label>Name<input required placeholder="Your name"/></label><label>Work email<input required type="email" placeholder="you@company.com"/></label><label>Company<input required placeholder="Company name"/></label><label>What should the experience explain?<textarea required rows="4" placeholder="Product, data, workflow, technical system..."/></label><button className="cta primary" type="submit">{submitted?"REQUEST RECEIVED ✓":"Book demo →"}</button></form>
         </section>
       </main>
 
-      <footer className="footer"><span>APEX / ENTERPRISE 3D PLATFORM</span><span>React · Three.js · GSAP</span><span>© 2026</span></footer>
+      <div className="sticky-cta"><a href="#contact">Book a demo</a></div>
+      <footer className="footer"><span>APEX ENTERPRISE 3D</span><span>React · R3F · GSAP · Zustand</span><span>© 2026</span></footer>
     </div>
   );
 }
-
 export default App;
