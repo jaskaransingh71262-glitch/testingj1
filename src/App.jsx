@@ -2,7 +2,7 @@ import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, Float, Html, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import "./enterprise.css";
+import "../enterprise.css";
 
 const MODEL_URL = "https://sceneview.github.io/models/platforms/ferrari_f40.glb";
 
