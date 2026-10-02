@@ -1,6 +1,6 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { ContactShadows, Environment, Float, OrbitControls } from "@react-three/drei";
+import { Clone, ContactShadows, Environment, Float, OrbitControls, useGLTF } from "@react-three/drei";
 
 const cars = [
   { id: "vxr", name: "VXR 900", type: "Grand Tourer", price: "$89,900", power: "612 HP", zero: "3.4 s", top: "198 MPH", color: "#c7c9ce" },
@@ -8,8 +8,23 @@ const cars = [
   { id: "gt", name: "GT Blackline", type: "Performance Sedan", price: "$106,200", power: "668 HP", zero: "3.0 s", top: "204 MPH", color: "#292b31" }
 ];
 
-function Car({ paint, accent }) {
+function Car({ paint }) {
   const group = useRef();
+  const { scene } = useGLTF("/cars/sports-car.glb");
+
+  useEffect(() => {
+    scene.traverse((object) => {
+      if (!object.isMesh) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      materials.forEach((material) => {
+        if (material?.name === "White" && material.color) {
+          material.color.set(paint);
+          material.metalness = 0.72;
+          material.roughness = 0.2;
+        }
+      });
+    });
+  }, [scene, paint]);
 
   useFrame((_, delta) => {
     if (group.current) {
@@ -18,30 +33,8 @@ function Car({ paint, accent }) {
   });
 
   return (
-    <group ref={group}>
-      <mesh castShadow position={[0, 0.55, 0]}>
-        <boxGeometry args={[3.8, 0.55, 1.55]} />
-        <meshStandardMaterial color={paint} metalness={0.85} roughness={0.2} />
-      </mesh>
-
-      <mesh castShadow position={[0.25, 1.02, 0]}>
-        <boxGeometry args={[1.8, 0.55, 1.35]} />
-        <meshStandardMaterial color="#161a20" metalness={0.15} roughness={0.12} />
-      </mesh>
-
-      <mesh castShadow position={[1.65, 0.3, 0]}>
-        <boxGeometry args={[0.65, 0.25, 1.5]} />
-        <meshStandardMaterial color={accent} metalness={0.8} roughness={0.22} />
-      </mesh>
-
-      {[-1.35, 1.35].map((x) =>
-        [-0.68, 0.68].map((z) => (
-          <mesh key={x + z} position={[x, 0.18, z]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.38, 0.38, 0.18, 32]} />
-            <meshStandardMaterial color="#08090b" metalness={0.7} roughness={0.25} />
-          </mesh>
-        ))
-      )}
+    <group ref={group} position={[0, -0.85, 0]} scale={1.65}>
+      <Clone object={scene} castShadow receiveShadow />
     </group>
   );
 }
