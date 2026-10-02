@@ -2,15 +2,17 @@ import React, { Suspense, useEffect, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Clone, ContactShadows, Environment, Float, OrbitControls, useGLTF } from "@react-three/drei";
 
+const BMW_MODEL_URL = "https://raw.githubusercontent.com/coopercodes/bmwGLB/main/bmw_m4_competition_m_package.glb";
+
 const cars = [
-  { id: "vxr", name: "VXR 900", type: "Grand Tourer", price: "$89,900", power: "612 HP", zero: "3.4 s", top: "198 MPH", color: "#c7c9ce" },
-  { id: "r8", name: "Aero R8", type: "Track Coupe", price: "$124,500", power: "741 HP", zero: "2.8 s", top: "211 MPH", color: "#5f8cff" },
-  { id: "gt", name: "GT Blackline", type: "Performance Sedan", price: "$106,200", power: "668 HP", zero: "3.0 s", top: "204 MPH", color: "#292b31" }
+  { id: "vxr", name: "BMW M4 Competition", type: "BMW M4 · M Package", price: "$89,900", power: "612 HP", zero: "3.4 s", top: "198 MPH", color: "#c7c9ce" },
+  { id: "r8", name: "BMW M4 Competition", type: "BMW M4 · M Package", price: "$124,500", power: "741 HP", zero: "2.8 s", top: "211 MPH", color: "#5f8cff" },
+  { id: "gt", name: "BMW M4 Competition", type: "BMW M4 · M Package", price: "$106,200", power: "668 HP", zero: "3.0 s", top: "204 MPH", color: "#292b31" }
 ];
 
 function Car({ paint }) {
   const group = useRef();
-  const { scene } = useGLTF("/cars/sports-car.glb");
+  const { scene } = useGLTF(BMW_MODEL_URL);
 
   useEffect(() => {
     scene.traverse((object) => {
@@ -248,3 +250,4 @@ function App() {
 }
 
 export default App;
+
