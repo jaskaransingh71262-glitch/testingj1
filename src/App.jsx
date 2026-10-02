@@ -1,89 +1,85 @@
-import React, { useEffect, useRef, useState } from "react";
+import React,{useEffect,useRef,useState} from "react";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import {ScrollTrigger} from "gsap/ScrollTrigger";
 import "../enterprise.css";
-
 gsap.registerPlugin(ScrollTrigger);
 
-const F40_EMBED="https://sketchfab.com/models/ee082e412b0a4b2090e8492117841e95/embed?autostart=1&ui_theme=dark&ui_infos=0&ui_controls=1&ui_watermark=0&ui_stop=0&ui_snapshots=0";
-const specs=[["2.9","LITRE V8","TWIN TURBO"],["478","PS","MAX POWER"],["324","KM/H","TOP SPEED"],["1,100","KG","DRY WEIGHT"]];
-const chapters=["THE MACHINE","THE ENGINE","THE NUMBERS","THE EXPERIENCE"];
+const MODEL="https://sketchfab.com/models/ee082e412b0a4b2090e8492117841e95/embed?autostart=1&ui_theme=dark&ui_infos=0&ui_controls=1&ui_watermark=0";
+const data=[["478","PS","POWER"],["324","KM/H","TOP SPEED"],["1,100","KG","DRY"],["4.1","SEC","0—100 KM/H"]];
+const scenes=[
+ {n:"01",tag:"THE ARRIVAL",title:"A MACHINE
+WITHOUT
+PERMISSION.",copy:"Turn the screen into a runway. The F40 arrives slowly, then takes over the entire frame."},
+ {n:"02",tag:"THE SHAPE",title:"EVERY LINE
+HAS A
+REASON.",copy:"A silhouette designed around speed. No ornament. No apology."},
+ {n:"03",tag:"THE HEART",title:"TWO TURBOS.
+EIGHT
+CYLINDERS.",copy:"The numbers are impressive. The feeling is the point."}
+];
 
-function Viewer({className=""}){return <div className={"machine-view "+className}><iframe title="Ferrari F40 3D" src={F40_EMBED} allow="autoplay; fullscreen; xr-spatial-tracking" allowFullScreen/><div className="machine-shade"/><div className="scanline"/></div>}
+function Model({className=""}){return <div className={"model "+className}><iframe title="Interactive Ferrari F40" src={MODEL} allow="autoplay;fullscreen;xr-spatial-tracking" allowFullScreen/><div className="model-glow"/><div className="model-vignette"/></div>}
 
 function App(){
- const root=useRef(null); const [menu,setMenu]=useState(false); const [chapter,setChapter]=useState(0); const [loaded,setLoaded]=useState(false);
+ const root=useRef(null);const [menu,setMenu]=useState(false);const [active,setActive]=useState(0);const [mode,setMode]=useState("SCULPTURE");
  useEffect(()=>{const ctx=gsap.context(()=>{
-   gsap.to(".intro-curtain",{yPercent:-100,duration:1.25,delay:.35,ease:"power4.inOut",onComplete:()=>setLoaded(true)});
-   gsap.from(".hero-kicker,.hero-title,.hero-description,.hero-buttons",{y:55,opacity:0,duration:1.15,delay:1.1,stagger:.1,ease:"power4.out"});
-   gsap.from(".hero-number,.hero-bottom",{opacity:0,duration:1,delay:1.5});
-   gsap.utils.toArray(".mega-reveal").forEach(el=>gsap.from(el,{y:90,opacity:0,duration:1,ease:"power4.out",scrollTrigger:{trigger:el,start:"top 82%"}}));
-   gsap.to(".hero-car-word",{xPercent:-28,ease:"none",scrollTrigger:{trigger:".hero",start:"top top",end:"bottom top",scrub:1}});
-   gsap.to(".machine-hero",{scale:1.12,yPercent:7,ease:"none",scrollTrigger:{trigger:".hero",start:"top top",end:"bottom top",scrub:1}});
-   gsap.utils.toArray(".chapter").forEach((el,i)=>ScrollTrigger.create({trigger:el,start:"top 50%",end:"bottom 50%",onEnter:()=>setChapter(i),onEnterBack:()=>setChapter(i)}));
+   gsap.to(".opening",{yPercent:-100,duration:1.5,delay:.4,ease:"power4.inOut"});
+   gsap.from(".arrival-copy>*",{y:70,opacity:0,duration:1.2,delay:1.5,stagger:.1,ease:"power4.out"});
+   gsap.utils.toArray(".scene").forEach((el,i)=>ScrollTrigger.create({trigger:el,start:"top 48%",end:"bottom 48%",onEnter:()=>setActive(i),onEnterBack:()=>setActive(i)}));
+   gsap.utils.toArray(".scene-title").forEach(el=>gsap.from(el,{y:120,opacity:0,duration:1.1,ease:"power4.out",scrollTrigger:{trigger:el,start:"top 82%"}}));
+   gsap.to(".runway",{xPercent:-18,scrollTrigger:{trigger:".hero2",start:"top bottom",end:"bottom top",scrub:1}});
+   gsap.to(".giant-f40",{scale:1.18,yPercent:8,scrollTrigger:{trigger:".hero2",start:"top top",end:"bottom top",scrub:1}});
+   gsap.utils.toArray(".stat-big").forEach(el=>gsap.from(el,{scale:.7,opacity:0,duration:1,scrollTrigger:{trigger:el,start:"top 85%"}}));
  },root);return()=>ctx.revert()},[]);
  const go=id=>{document.querySelector(id)?.scrollIntoView({behavior:"smooth"});setMenu(false)};
- return <div className="f40-site big-site" ref={root}>
-   <div className="intro-curtain"><span>F40</span><small>AN UNFILTERED DIGITAL EXPERIENCE</small></div>
-   <header className="big-nav">
-    <button className="big-logo" onClick={()=>go("#top")}><b>F</b><span>FERRARI<br/><i>F40 / DIGITAL</i></span></button>
-    <div className="nav-center"><span>MARANELLO</span><span>1987</span><span>01—04</span></div>
-    <button className="nav-menu" onClick={()=>setMenu(!menu)}>{menu?"CLOSE":"MENU"} <i><b/><b/></i></button>
-    {menu&&<div className="menu-panel"><button onClick={()=>go("#machine")}>THE MACHINE</button><button onClick={()=>go("#engine")}>THE ENGINE</button><button onClick={()=>go("#numbers")}>THE NUMBERS</button><button onClick={()=>go("#experience")}>EXPERIENCE</button></div>}
-   </header>
-   <div className="chapter-dots">{chapters.map((x,i)=><button key={x} className={chapter===i?"active":""} onClick={()=>go(["#machine","#engine","#numbers","#experience"][i])}><span>0{i+1}</span><i/></button>)}</div>
-   <main id="top">
-    <section className="hero" id="machine">
-      <Viewer className="machine-hero"/>
-      <div className="hero-gradient"/>
-      <div className="hero-copy-big">
-       <div className="hero-kicker">FERRARI / F40 / DIGITAL ARCHIVE 001</div>
-       <h1 className="hero-title">THE<br/><em>UNFORGIVING</em><br/>MACHINE.</h1>
-       <p className="hero-description">There are cars designed to be comfortable. And then there is the F40.</p>
-       <div className="hero-buttons"><button className="big-button" onClick={()=>go("#engine")}>DISCOVER THE MACHINE <b>↘</b></button><button className="line-button" onClick={()=>go("#numbers")}>EXPLORE DATA</button></div>
-      </div>
-      <div className="hero-number">F40<small>01</small></div>
-      <div className="hero-bottom"><span>DRAG / ROTATE / EXPLORE</span><span>SCROLL TO ENTER</span><span>1987—1992</span></div>
-      <div className="hero-car-word">FERRARI</div>
-    </section>
+ return <div className="rebuilt-f40" ref={root}>
+  <div className="opening"><span>F40</span><small>1987 / MARANELLO / DIGITAL EXPERIENCE</small></div>
+  <header className="neo-nav">
+   <button className="neo-mark" onClick={()=>go("#home")}><strong>F</strong><span>F40<br/><i>ARCHIVE</i></span></button>
+   <div className="neo-center">MARANELLO <b>×</b> 1987</div>
+   <button className="neo-menu" onClick={()=>setMenu(!menu)}>{menu?"CLOSE":"EXPLORE"} <span>☰</span></button>
+   {menu&&<div className="neo-panel"><button onClick={()=>go("#machine")}>01 / THE MACHINE</button><button onClick={()=>go("#shape")}>02 / THE SHAPE</button><button onClick={()=>go("#heart")}>03 / THE HEART</button><button onClick={()=>go("#data")}>04 / THE DATA</button><button onClick={()=>go("#studio")}>05 / STUDIO</button></div>}
+  </header>
 
-    <section className="chapter engine chapter" id="engine">
-      <div className="chapter-index mega-reveal">02 / THE ENGINE</div>
-      <div className="engine-layout">
-       <div className="engine-copy mega-reveal"><p className="red-label">RAW POWER / NO FILTER</p><h2>THE TURBOS<br/><em>WAKE UP.</em></h2><p>Two turbochargers. Eight cylinders. Nothing between the driver and the machine except a thin shell of carbon fibre.</p><button className="text-arrow" onClick={()=>go("#numbers")}>READ THE NUMBERS <b>→</b></button></div>
-       <div className="engine-orbit mega-reveal"><Viewer/><div className="orbit-ring one"/><div className="orbit-ring two"/><span className="orbit-caption">2.9L / V8 / TWIN TURBO</span></div>
-      </div>
-    </section>
+  <aside className="scene-nav">{scenes.map((s,i)=><button className={active===i?"on":""} key={s.n} onClick={()=>go(["#machine","#shape","#heart"][i])}><b>{s.n}</b><span>{s.tag}</span></button>)}</aside>
 
-    <section className="numbers chapter" id="numbers">
-      <div className="numbers-top"><div className="chapter-index">03 / THE NUMBERS</div><p>Figures from the machine that made the legend.</p></div>
-      <div className="numbers-title mega-reveal">NOT<br/><em>NUMBERS.</em><span>WEAPON.</span></div>
-      <div className="stat-grid">{specs.map(([n,l,s])=><div className="stat mega-reveal" key={l}><strong>{n}</strong><span>{l}</span><small>{s}</small></div>)}</div>
-      <div className="speed-line"><i/></div>
-    </section>
+  <main id="home">
+   <section className="hero2" id="machine">
+    <div className="giant-f40"><Model/></div>
+    <div className="red-light"/><div className="grid-floor"/>
+    <div className="arrival-copy"><small>FERRARI F40 / DIGITAL ARCHIVE 001</small><h1>THE<br/><em>ICON</em><br/>ARRIVES.</h1><p>Move your cursor. Drag the machine. Scroll into the story.</p><button onClick={()=>go("#shape")}>ENTER EXPERIENCE <b>↓</b></button></div>
+    <div className="hero2-edge"><span>1987—1992</span><span>INTERACTIVE 3D</span><span>120.2K TRIANGLES</span></div>
+    <div className="scroll-word">FERRARI</div>
+   </section>
 
-    <section className="manifest chapter">
-      <div className="manifest-bg">F40</div>
-      <div className="manifest-inner">
-       <p className="red-label">NO COMFORT. NO COMPROMISE.</p>
-       <h2 className="mega-reveal">BUILT FOR<br/><em>THE BRAVE.</em></h2>
-       <p className="manifest-text mega-reveal">The F40 was created as a celebration of speed, simplicity and engineering. This experience treats it the same way: remove the noise, leave the machine.</p>
-      </div>
-    </section>
+   <section className="scene shape" id="shape">
+    <div className="scene-media"><Model/></div>
+    <div className="scene-copy"><span className="scene-tag">02 / THE SHAPE</span><h2 className="scene-title">EVERY LINE<br/><i>HAS A REASON.</i></h2><p>Forget the brochure. Study the object. Rotate it until the silhouette makes sense.</p><div className="hotspot-list"><button><i>01</i> WEDGE SILHOUETTE</button><button><i>02</i> REAR WING</button><button><i>03</i> AIR INTAKES</button></div></div>
+   </section>
 
-    <section className="experience-big chapter" id="experience">
-      <div className="experience-top"><div className="chapter-index">04 / EXPERIENCE</div><span>THE OBJECT IS THE INTERFACE</span></div>
-      <div className="experience-word mega-reveal">TOUCH<br/><em>THE ICON.</em></div>
-      <div className="experience-view mega-reveal"><Viewer/><div className="viewer-hint">INTERACTIVE 3D <span>◉</span> DRAG TO ROTATE</div></div>
-      <div className="experience-footer"><span>120.2K TRIANGLES</span><span>CC ATTRIBUTION MODEL</span><span>WEBGL EXPERIENCE</span></div>
-    </section>
+   <section className="scene heart" id="heart">
+    <div className="heart-bg">V8</div>
+    <div className="heart-copy"><span className="scene-tag">03 / THE HEART</span><h2 className="scene-title">TWO TURBOS.<br/><i>EIGHT CYLINDERS.</i></h2><p>The F40 doesn't whisper. Its engineering is part of the visual language.</p><button className="outline-action" onClick={()=>go("#data")}>OPEN ENGINE STORY →</button></div>
+    <div className="engine-model"><Model/></div>
+   </section>
 
-    <section className="finale chapter">
-      <div className="finale-bg">F40</div>
-      <div className="finale-content mega-reveal"><p className="red-label">THE END IS THE BEGINNING</p><h2>NOTHING<br/><em>COMPARES.</em></h2><button className="big-button" onClick={()=>go("#top")}>RESTART EXPERIENCE ↑</button></div>
-      <div className="finale-footer"><span>F40 DIGITAL ARCHIVE</span><span>VECARZ / 2026</span></div>
-    </section>
-   </main>
+   <section className="data-scene" id="data">
+    <div className="data-header"><span>04 / THE DATA</span><p>THE MACHINE, REDUCED TO FOUR NUMBERS.</p></div>
+    <div className="stat-wall">{data.map(([n,u,l])=><div className="stat-big" key={l}><strong>{n}</strong><em>{u}</em><span>{l}</span></div>)}</div>
+    <div className="data-line"><span>F40</span><i/></div>
+   </section>
+
+   <section className="studio" id="studio">
+    <div className="studio-top"><span>05 / THE STUDIO</span><span>DIGITAL OBJECT / 001</span></div>
+    <div className="studio-title"><span>THE</span><em>OBJECT</em><span>IS</span><em>ALIVE.</em></div>
+    <div className="studio-layout"><Model className="studio-model"/><div className="studio-panel"><small>VIEW MODE</small><div className="mode-tabs">{["SCULPTURE","DETAIL","NIGHT"].map(x=><button className={mode===x?"selected":""} onClick={()=>setMode(x)} key={x}>{x}</button>)}</div><p>{mode==="SCULPTURE"?"Explore the full silhouette in its cleanest form.":mode==="DETAIL"?"Get close. Inspect the proportions, surfaces and mechanical attitude.":"A darker interpretation for the machine after sunset."}</p><div className="studio-meta"><span>MODEL</span><b>FERRARI F40</b><span>FORMAT</span><b>WEBGL / GLTF</b></div></div></div>
+   </section>
+
+   <section className="final-rebuild">
+    <div className="final-model"><Model/></div><div className="final-overlay"><small>END OF ARCHIVE</small><h2>STILL<br/><em>UNFORGETTABLE.</em></h2><button onClick={()=>go("#home")}>REPLAY ↑</button></div>
+    <footer><span>F40 DIGITAL ARCHIVE</span><span>VECARZ / 2026</span><span>BACK TO TOP ↑</span></footer>
+   </section>
+  </main>
  </div>
 }
 export default App;
