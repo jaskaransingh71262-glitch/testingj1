@@ -61,21 +61,12 @@ export default function App() {
       alert("Upload a product photo first.");
       return;
     }
+
     setBusy(true);
     try {
-      const statusMessages = {
-        running: "Connecting to AI engine...",
-        sleeping: "Waking AI engine...",
-        building: "Starting AI engine..."
-      };
-      const client = await Client.connect("https://qwen-qwen-image-2-1.hf.space", {
-        events: ["status"],
-        status_callback: (s) => {
-          if (s?.status && statusMessages[s.status]) {
-            console.log(statusMessages[s.status]);
-          }
-        }
-      });
+      console.log("Connecting to Qwen Image 2.1 workflow...");
+
+      const client = await Client.connect("akhaliq/Qwen-Image-2.1-workflow");
 
       const creativePrompt = [
         prompt,
@@ -88,46 +79,40 @@ export default function App() {
         "premium advertising image, realistic materials, controlled composition"
       ].join(", ");
 
-      const prepared = await client.predict("/prepare_request", {
-        input_images: [handle_file(file)],
-        original_prompt: creativePrompt,
-        enable_extend: true,
-        custom_size: false,
-        quality: "speed",
-        seed: 42,
-        randomize_seed: true
+      console.log("Sending image to Qwen edit engine...");
+
+      const response = await client.predict("/edit_image", {
+        image: handle_file(file),
+        instruction: creativePrompt,
+        steps: 28
       });
 
-      const requestState = prepared.data?.[3];
-      const seed = prepared.data?.[1] ?? 42;
-      if (!requestState) throw new Error("AI engine could not prepare the image.");
+      const output = response?.data?.[0];
+      const rawUrl = output?.url || output?.path || output;
 
-      const generated = await client.predict("/generate_request", {
-        request_state: requestState,
-        original_prompt: creativePrompt,
-        enable_extend: true,
-        custom_size: false,
-        log_dir: "",
-        seed,
-        height: 1024,
-        width: 1024,
-        negative_prompt: "text, watermark, logo, distorted product, duplicate product"
-      });
+      if (!rawUrl) {
+        throw new Error("Qwen returned no generated image.");
+      }
 
-      const output = generated.data?.[0];
-      const imageUrl = output?.url || output?.path || output;
-      if (!imageUrl) throw new Error("AI engine returned no image.");
+      const imageUrl = String(rawUrl).startsWith("/")
+        ? "https://akhaliq-qwen-image-2-1-workflow.hf.space" + rawUrl
+        : String(rawUrl);
 
       const item = {
         url: imageUrl,
-        style, background, lighting, prompt,
+        style,
+        background,
+        lighting,
+        prompt,
         time: new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})
       };
+
       setResult(item);
       setHistory(h => [item, ...h].slice(0, 6));
+      console.log("Generation complete.");
     } catch (error) {
-      console.error(error);
-      alert("AI generation failed. Open the browser console for the exact error.\n\n" + (error?.message || String(error) || "Unknown error"));
+      console.error("Qwen generation error:", error);
+      alert("AI generation failed: " + (error?.message || String(error) || "Unknown error"));
     } finally {
       setBusy(false);
     }
