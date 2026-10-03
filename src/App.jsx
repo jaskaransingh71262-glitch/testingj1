@@ -79,24 +79,20 @@ export default function App() {
         "premium advertising image, realistic materials, controlled composition"
       ].join(", ");
 
-      console.log("Sending image to Qwen edit engine...");
+      console.log("Calling Qwen workflow /edited_image endpoint...");
 
-      const response = await client.predict("/edit_image", {
+      const response = await client.predict("/edited_image", {
         image: handle_file(file),
         instruction: creativePrompt,
         steps: 28
       });
 
       const output = response?.data?.[0];
-      const rawUrl = output?.url || output?.path || output;
+      const imageUrl = output?.url || output?.path || output;
 
-      if (!rawUrl) {
+      if (!imageUrl) {
         throw new Error("Qwen returned no generated image.");
       }
-
-      const imageUrl = String(rawUrl).startsWith("/")
-        ? "https://akhaliq-qwen-image-2-1-workflow.hf.space" + rawUrl
-        : String(rawUrl);
 
       const item = {
         url: imageUrl,
@@ -109,7 +105,7 @@ export default function App() {
 
       setResult(item);
       setHistory(h => [item, ...h].slice(0, 6));
-      console.log("Generation complete.");
+      console.log("Qwen generation complete.");
     } catch (error) {
       console.error("Qwen generation error:", error);
       alert("AI generation failed: " + (error?.message || String(error) || "Unknown error"));
