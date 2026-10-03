@@ -68,12 +68,12 @@ export default function App() {
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split("\\n\\n");
+      const events = buffer.split("\n\n");
       buffer = events.pop() || "";
 
       for (const event of events) {
-        const eventName = event.split("\\n").find(line => line.startsWith("event:"))?.slice(6).trim();
-        const dataLine = event.split("\\n").find(line => line.startsWith("data:"))?.slice(5).trim();
+        const eventName = event.split("\n").find(line => line.startsWith("event:"))?.slice(6).trim();
+        const dataLine = event.split("\n").find(line => line.startsWith("data:"))?.slice(5).trim();
         if (!dataLine) continue;
 
         if (eventName === "error") {
