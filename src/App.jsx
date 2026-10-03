@@ -14,11 +14,15 @@ const BACKGROUNDS = [
 ];
 const LIGHTING = ["Softbox", "Dramatic", "Daylight", "Neon"];
 
-function downloadCanvas(canvas, name) {
+async function downloadImage(url, name) {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.download = name;
-  link.href = canvas.toDataURL("image/png", 1);
+  link.href = objectUrl;
   link.click();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
 export default function App() {
@@ -185,7 +189,7 @@ export default function App() {
             <div className="canvas-wrap">
               {result ? <img className="result-image" src={result.url} alt="Generated product campaign" /> : <div className="empty"><div className="empty-icon">✦</div><h2>Your campaign<br /><em>appears here.</em></h2><p>Upload a product and create your first composition.</p></div>}
             </div>
-            {result && <div className="result-bar"><span>{result.style} · {result.background} · {result.lighting}</span><button onClick={() => downloadCanvas(canvasRef.current, "ai-product-studio.png")}>DOWNLOAD PNG ↓</button></div>}
+            {result && <div className="result-bar"><span>{result.style} · {result.background} · {result.lighting}</span><button onClick={() => downloadImage(result.url, "ai-product-studio.png")}>DOWNLOAD PNG ↓</button></div>}
             <canvas ref={canvasRef} className="hidden-canvas" />
           </section>
         </section>
