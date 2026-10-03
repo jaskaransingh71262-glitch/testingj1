@@ -1,5 +1,4 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Client } from "@gradio/client";
 
 const STYLES = [
   ["Luxury", "Luxury editorial", "soft shadows, premium materials, high-end campaign"],
@@ -97,11 +96,7 @@ export default function App() {
 
     setBusy(true);
     try {
-      const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
-      if (!apiBase) {
-        throw new Error("AI backend is not connected yet. Set VITE_API_BASE_URL to the Render backend.");
-      }
-
+      const apiBase = (import.meta.env.VITE_API_BASE_URL || "https://ai-product-studio-api.onrender.com").replace(/\/$/, "");
       const creativePrompt = [
         prompt,
         selectedStyle?.[2],
