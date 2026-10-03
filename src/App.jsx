@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Client } from "@gradio/client";
+import { Client, handle_file } from "@gradio/client";
 
 const STYLES = [
   ["Luxury", "Luxury editorial", "soft shadows, premium materials, high-end campaign"],
@@ -68,9 +68,9 @@ export default function App() {
       console.log("Connecting to official Qwen Image 2.1...");
 
       const client = await Client.connect("Qwen/Qwen-Image-2.1", {
-        events: ["status"],
+        events: ["status", "data"],
         status_callback: (s) => {
-          if (s?.status) console.log("Qwen status:", s.status, s);
+          if (s?.status) console.log("Qwen status:", s.status, s);\n          if (s?.status === "error") console.error("Qwen detailed status error:", s);
         },
         httpx_kwargs: { timeout: 900 }
       });
