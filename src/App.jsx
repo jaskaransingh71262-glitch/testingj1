@@ -89,7 +89,7 @@ export default function App() {
       console.log("Preparing Qwen image-edit request...");
 
       const prepared = await client.predict("/prepare_request", {
-        input_images: [handle_file(file)],
+        input_images: [[handle_file(file), null]],
         original_prompt: creativePrompt,
         enable_extend: false,
         custom_size: false,
