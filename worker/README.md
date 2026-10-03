@@ -2,43 +2,71 @@
 
 This worker connects the Render job API to FLUX.1 Kontext [dev].
 
-## Current free deployment path: Google Colab
+## Current free deployment path: Kaggle
 
-Colab free GPU availability is not guaranteed and sessions can end, so this is a development/public-demo worker rather than an always-on production GPU.
+Kaggle notebooks can provide free GPU access, but GPU availability and session duration are not guaranteed. Use the Kaggle notebook as an on-demand worker rather than assuming an always-on GPU server.
 
-### 1. Accept the FLUX model license
+Kaggle's current GPU guidance should be checked before relying on a specific accelerator or quota.
 
-The model is gated on Hugging Face. Sign in, accept the model conditions, and create a Hugging Face access token.
+### Model
 
-Model: https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev
+The worker uses:
 
-### 2. Start a Colab GPU runtime
+- Model: `black-forest-labs/FLUX.1-Kontext-dev`
+- Input: product image + creative prompt
+- Output: generated PNG sent back to Render
+- GPU mode: CUDA
+- Memory strategy: Diffusers CPU offload
+- T4: FP16
+- Newer GPUs with compute capability >= 8: BF16
 
-Open a new Google Colab notebook and select Runtime -> Change runtime type -> T4 GPU (if offered).
+The FLUX model is gated on Hugging Face. Accept its current terms and create a Hugging Face access token before running the worker.
 
-### 3. Install dependencies
+## Kaggle setup
 
-    !pip install -U requests torch torchvision transformers diffusers accelerate safetensors Pillow huggingface_hub
+### 1. Create a Kaggle notebook
 
-### 4. Set worker variables
+Create a new Kaggle Notebook.
 
-    import os
-    os.environ["BACKEND_URL"] = "https://testingj1-1.onrender.com"
-    os.environ["WORKER_SECRET"] = "PASTE_THE_VALUE_FROM_RENDER_HERE"
-    os.environ["HF_TOKEN"] = "PASTE_YOUR_HUGGING_FACE_TOKEN_HERE"
+Set:
 
-Do not commit either secret to GitHub.
+**Notebook -> Accelerator -> GPU**
 
-### 5. Run the worker
+A T4 is suitable for the current worker. If Kaggle assigns another supported NVIDIA GPU, the worker automatically selects FP16/BF16 based on compute capability.
 
-Download worker/colab_worker.py from this repository and run it in Colab.
+### 2. Add Kaggle Secrets
 
-The worker polls Render, downloads the uploaded product image, runs FLUX.1 Kontext [dev], sends the generated PNG back to Render, and marks the job completed.
+Add these notebook secrets:
 
-Keep the Colab session running while you want generation available.
+- `HF_TOKEN` = your Hugging Face access token
+- `WORKER_SECRET` = the exact Render environment variable value
+
+Do not put either secret in GitHub or in a notebook cell.
+
+### 3. Run the notebook cells
+
+Use the cells documented below in the project setup instructions.
+
+The worker downloads `worker/kaggle_worker.py` from GitHub, loads FLUX, polls Render for queued jobs, downloads each product image, generates the campaign image, and uploads the result back to Render.
+
+### 4. Keep the notebook running
+
+When the Kaggle session ends, the GPU worker stops. New jobs remain queued on Render until another worker session is started.
+
+## Existing backend contract
+
+The worker uses these Render endpoints:
+
+- `GET /api/worker/jobs/next`
+- `POST /api/worker/jobs/:id/complete`
+- `POST /api/worker/jobs/:id/fail`
+
+The existing `WORKER_SECRET` protects all worker endpoints.
 
 ## Important limitations
 
-- Free Colab does not guarantee a GPU, a particular GPU type, or unlimited runtime.
-- Render's local filesystem is temporary in this prototype.
-- FLUX.1 Kontext [dev] is gated and uses the FLUX.1 [dev] Non-Commercial License. Check the current model terms before commercial deployment.
+- Free Kaggle GPU availability is not guaranteed.
+- Kaggle sessions can stop, so this is not an always-on production GPU.
+- Render's prototype job queue is in memory.
+- Render's local filesystem is temporary.
+- FLUX.1 Kontext [dev] is subject to its current model/license terms. Check the current Hugging Face terms before commercial deployment.
