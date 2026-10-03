@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Client, handle_file } from "@gradio/client";
+import { Client } from "@gradio/client";
 
 const STYLES = [
   ["Luxury", "Luxury editorial", "soft shadows, premium materials, high-end campaign"],
