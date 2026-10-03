@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
+import { Client, handle_file } from "@gradio/client";
 
 const STYLES = [
   ["Luxury", "Luxury editorial", "soft shadows, premium materials, high-end campaign"],
@@ -56,77 +57,67 @@ export default function App() {
   };
 
   const generate = async () => {
-    if (!preview) {
+    if (!file) {
       alert("Upload a product photo first.");
       return;
     }
     setBusy(true);
     try {
-      const API = "https://jaskaransingh123-ai-product-studio-engine.hf.space";
-      const uploadData = new FormData();
-      const blob = await (await fetch(preview)).blob();
-      uploadData.append("files", blob, file?.name || "product.png");
-      const uploadResponse = await fetch(API + "/gradio_api/upload", {
-        method: "POST",
-        body: uploadData
+      const statusMessages = {
+        running: "Connecting to AI engine...",
+        sleeping: "Waking AI engine...",
+        building: "Starting AI engine..."
+      };
+      const client = await Client.connect("Qwen/Qwen-Image-2.1", {
+        events: ["status"],
+        status_callback: (s) => {
+          if (s?.status && statusMessages[s.status]) {
+            console.log(statusMessages[s.status]);
+          }
+        }
       });
-      if (!uploadResponse.ok) throw new Error("Image upload failed.");
-      const uploaded = await uploadResponse.json();
-      const path = Array.isArray(uploaded) ? uploaded[0] : uploaded.path;
 
-      const promptText = [
+      const creativePrompt = [
         prompt,
         selectedStyle?.[2],
         "professional commercial product photography",
-        "preserve the product identity and proportions",
+        "preserve the exact product identity, proportions, shape and key details",
+        "do not add text, logos or watermarks",
         background + " background",
         lighting + " lighting",
-        "high detail, realistic materials"
+        "premium advertising image, realistic materials, controlled composition"
       ].join(", ");
 
-      const callResponse = await fetch(API + "/gradio_api/call/generate", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          data: [
-            {path, meta: {_type: "gradio.FileData"}},
-            promptText,
-            0.35,
-            4
-          ]
-        })
+      const prepared = await client.predict("/prepare_request", {
+        input_images: [handle_file(file)],
+        original_prompt: creativePrompt,
+        enable_extend: true,
+        custom_size: false,
+        quality: "speed",
+        seed: 42,
+        randomize_seed: true
       });
-      if (!callResponse.ok) throw new Error("Generation request failed.");
-      const event = await callResponse.json();
 
-      const stream = await fetch(API + "/gradio_api/call/generate/" + event.event_id);
-      if (!stream.ok) throw new Error("Generation queue failed.");
-      const reader = stream.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let output = null;
+      const requestState = prepared.data?.[3];
+      const seed = prepared.data?.[1] ?? 42;
+      if (!requestState) throw new Error("AI engine could not prepare the image.");
 
-      while (true) {
-        const {value, done} = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, {stream: true});
-        const chunks = buffer.split("\n\n");
-        buffer = chunks.pop() || "";
-        for (const chunk of chunks) {
-          const dataLine = chunk.split("\n").find(line => line.startsWith("data:"));
-          if (!dataLine) continue;
-          const payload = dataLine.slice(5).trim();
-          if (!payload || payload === "null") continue;
-          try {
-            const parsed = JSON.parse(payload);
-            if (Array.isArray(parsed) && parsed[0]) output = parsed[0];
-          } catch {}
-        }
-      }
+      const generated = await client.predict("/generate_request", {
+        request_state: requestState,
+        original_prompt: creativePrompt,
+        enable_extend: true,
+        custom_size: false,
+        log_dir: "",
+        seed,
+        height: 1024,
+        width: 1024,
+        negative_prompt: "text, watermark, logo, distorted product, duplicate product"
+      });
 
-      const imagePath = output?.url || output?.path;
-      if (!imagePath) throw new Error("The AI engine returned no image.");
-      const imageUrl = imagePath.startsWith("http") ? imagePath : API + "/file=" + encodeURIComponent(imagePath);
+      const output = generated.data?.[0];
+      const imageUrl = output?.url || output?.path || output;
+      if (!imageUrl) throw new Error("AI engine returned no image.");
+
       const item = {
         url: imageUrl,
         style, background, lighting, prompt,
@@ -136,7 +127,7 @@ export default function App() {
       setHistory(h => [item, ...h].slice(0, 6));
     } catch (error) {
       console.error(error);
-      alert("AI generation failed: " + error.message);
+      alert("AI generation failed: " + (error?.message || "Unknown error"));
     } finally {
       setBusy(false);
     }
