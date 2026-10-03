@@ -1,4 +1,4 @@
-name: Build and Deploy to Hugging Face
+name: Build and Deploy to GitHub Pages
 
 on:
   push:
@@ -6,14 +6,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout GitHub repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Node.js
@@ -30,50 +30,10 @@ jobs:
       - name: Verify production build
         run: test -f dist/index.html
 
-      - name: Deploy dist to Hugging Face Space
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          set -e
-
-          if [ -z "$HF_TOKEN" ]; then
-            echo "HF_TOKEN GitHub secret is not configured."
-            exit 1
-          fi
-
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          rm -rf hf-space
-          git clone "https://user:${HF_TOKEN}@huggingface.co/spaces/jaskaransingh123/ai-product-studio" hf-space
-
-          find hf-space -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-
-          cp -R dist/. hf-space/
-
-          cat > hf-space/README.md <<'EOF'
----
-title: AI Product Studio
-emoji: 🎨
-colorFrom: purple
-colorTo: blue
-sdk: static
-app_file: index.html
-pinned: false
----
-
-# AI Product Studio
-
-AI-powered product image creation studio.
-EOF
-
-          cd hf-space
-          git add -A
-
-          if git diff --cached --quiet; then
-            echo "No changes to deploy."
-            exit 0
-          fi
-
-          git commit -m "Deploy production build from testingj1"
-          git push origin HEAD:main
+      - name: Deploy dist to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          force_orphan: true
