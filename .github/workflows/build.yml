@@ -26,12 +26,14 @@ jobs:
         run: npm install
 
       - name: Build production app
+        env:
+          VITE_API_BASE_URL: https://testingj1-1.onrender.com
         run: npm run build
 
       - name: Verify production build
         run: test -f dist/index.html
 
-      - name: Deploy dist to gh-pages branch
+      - name: Deploy dist to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
