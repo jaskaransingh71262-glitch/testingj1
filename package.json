@@ -18,6 +18,6 @@
     "three": "^0.180.0",
     "vite": "latest",
     "zustand": "^5.0.8",
-    "@gradio/client": "^2.0.0"
+    "@gradio/client": "^2.7.1"
   }
 }
