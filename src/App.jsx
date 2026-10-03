@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Client, handle_file } from "@gradio/client";
+import { Client } from "@gradio/client";
 
 const STYLES = [
   ["Luxury", "Luxury editorial", "soft shadows, premium materials, high-end campaign"],
@@ -89,7 +89,7 @@ export default function App() {
       console.log("Preparing Qwen image-edit request...");
 
       const prepared = await client.predict("/prepare_request", {
-        input_images: [[handle_file(file), null]],
+        input_images: [[file, null]],
         original_prompt: creativePrompt,
         enable_extend: false,
         custom_size: false,
