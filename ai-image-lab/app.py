@@ -1,5 +1,6 @@
 import time
 import gradio as gr
+import spaces
 import torch
 from diffusers import FluxPipeline
 
@@ -24,6 +25,7 @@ def build_prompt(product, style, background, lighting):
         "clean composition, photorealistic, sharp focus, studio quality, no text, no watermark."
     )
 
+@spaces.GPU(duration=60)
 def generate(product, style, background, lighting, steps, guidance):
     if not product.strip():
         raise gr.Error("Describe the product first.")
@@ -38,6 +40,7 @@ def generate(product, style, background, lighting, steps, guidance):
         guidance_scale=float(guidance),
         width=1024,
         height=1024,
+        max_sequence_length=256,
     )
     elapsed = time.perf_counter() - started
 
