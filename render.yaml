@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: ai-product-studio-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: WORKER_SECRET
+        generateValue: true
