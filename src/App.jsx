@@ -96,137 +96,70 @@ export default function App() {
     }
 
     setBusy(true);
-    const HOST = "https://qwen-qwen-image-2-1.hf.space";
-
     try {
-      console.log("Uploading image to official Qwen Image 2.1...");
-
-      const uploadForm = new FormData();
-      uploadForm.append("files", file, file.name);
-
-      const uploadResponse = await fetch(HOST + "/gradio_api/upload", {
-        method: "POST",
-        body: uploadForm
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error("Qwen upload failed (" + uploadResponse.status + ").");
-      }
-
-      const uploaded = await uploadResponse.json();
-      const uploadedPath = Array.isArray(uploaded) ? uploaded[0] : uploaded?.path;
-
-      if (!uploadedPath) {
-        throw new Error("Qwen returned no uploaded image path.");
+      const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+      if (!apiBase) {
+        throw new Error("AI backend is not connected yet. Set VITE_API_BASE_URL to the Render backend.");
       }
 
       const creativePrompt = [
         prompt,
         selectedStyle?.[2],
         "professional commercial product photography",
-        "preserve the exact product identity, proportions, shape and key details",
-        "do not add text, logos or watermarks",
+        "preserve product identity, proportions, shape and key details",
+        "no text, logos or watermarks",
         background + " background",
         lighting + " lighting",
         "premium advertising image, realistic materials, controlled composition"
       ].join(", ");
 
-      console.log("Preparing Qwen image-edit request...");
+      console.log("Submitting image job to AI Product Studio backend...");
 
-      const prepare = await fetch(HOST + "/gradio_api/call/prepare_request", {
+      const form = new FormData();
+      form.append("image", file, file.name);
+      form.append("prompt", creativePrompt);
+      form.append("style", style);
+      form.append("background", background);
+      form.append("lighting", lighting);
+
+      const response = await fetch(apiBase + "/api/jobs", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          data: [
-            [{ path: uploadedPath }],
-            creativePrompt,
-            false,
-            false,
-            "speed",
-            0,
-            true
-          ]
-        })
+        body: form
       });
 
-      if (!prepare.ok) {
-        const detail = await prepare.text();
-        throw new Error("Qwen prepare failed (" + prepare.status + "): " + detail.slice(0, 500));
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || "AI backend rejected the request (" + response.status + ").");
       }
 
-      const prepareCall = await prepare.json();
-      if (!prepareCall?.event_id) {
-        throw new Error("Qwen prepare returned no event ID.");
+      const jobId = payload.jobId;
+      if (!jobId) throw new Error("AI backend returned no job ID.");
+
+      let job = payload;
+      for (let attempt = 0; attempt < 120; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const statusResponse = await fetch(apiBase + "/api/jobs/" + encodeURIComponent(jobId));
+        const statusPayload = await statusResponse.json().catch(() => ({}));
+
+        if (!statusResponse.ok) {
+          throw new Error(statusPayload.error || "Could not read generation status.");
+        }
+
+        job = statusPayload;
+        if (job.status === "completed") break;
+        if (job.status === "failed") {
+          throw new Error(job.error || "The AI worker failed to generate the image.");
+        }
       }
 
-      const prepareStream = await fetch(
-        HOST + "/gradio_api/call/prepare_request/" + encodeURIComponent(prepareCall.event_id),
-        { headers: { Accept: "text/event-stream" } }
-      );
-
-      if (!prepareStream.ok || !prepareStream.body) {
-        throw new Error("Could not read Qwen prepare stream.");
+      if (job.status !== "completed" || !job.imageUrl) {
+        throw new Error("Generation timed out. The worker may still be processing the job.");
       }
 
-      const preparedResult = await readGradioStream(prepareStream);
-      const preparedData = preparedResult?.data || [];
-      const seed = preparedData[1] ?? 0;
-      const requestState = preparedData[3];
-
-      if (!requestState) {
-        throw new Error("Qwen returned no request state.");
-      }
-
-      console.log("Submitting Qwen GPU generation...");
-
-      const generate = await fetch(HOST + "/gradio_api/call/generate_request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          data: [
-            requestState,
-            creativePrompt,
-            false,
-            false,
-            "",
-            seed,
-            1024,
-            1024,
-            "text, watermark, logo, distorted product, duplicate product"
-          ]
-        })
-      });
-
-      if (!generate.ok) {
-        const detail = await generate.text();
-        throw new Error("Qwen generation failed (" + generate.status + "): " + detail.slice(0, 500));
-      }
-
-      const generateCall = await generate.json();
-      if (!generateCall?.event_id) {
-        throw new Error("Qwen generation returned no event ID.");
-      }
-
-      const generateStream = await fetch(
-        HOST + "/gradio_api/call/generate_request/" + encodeURIComponent(generateCall.event_id),
-        { headers: { Accept: "text/event-stream" } }
-      );
-
-      if (!generateStream.ok || !generateStream.body) {
-        throw new Error("Could not read Qwen generation stream.");
-      }
-
-      const generatedResult = await readGradioStream(generateStream);
-      const output = generatedResult?.data?.[0];
-      const rawUrl = output?.url || output?.path || output;
-
-      if (!rawUrl) {
-        throw new Error("Qwen returned no generated image.");
-      }
-
-      const imageUrl = String(rawUrl).startsWith("http")
-        ? String(rawUrl)
-        : HOST + (String(rawUrl).startsWith("/") ? String(rawUrl) : "/" + String(rawUrl));
+      const imageUrl = job.imageUrl.startsWith("http")
+        ? job.imageUrl
+        : apiBase + job.imageUrl;
 
       const item = {
         url: imageUrl,
@@ -239,15 +172,14 @@ export default function App() {
 
       setResult(item);
       setHistory(h => [item, ...h].slice(0, 6));
-      console.log("Qwen generation complete:", imageUrl);
+      console.log("AI generation complete:", imageUrl);
     } catch (error) {
-      console.error("Qwen generation error:", error);
+      console.error("AI generation error:", error);
       alert("AI generation failed: " + (error?.message || String(error) || "Unknown error"));
     } finally {
       setBusy(false);
     }
   };
-
   return (
     <div className="studio-app">
       <header className="nav">
