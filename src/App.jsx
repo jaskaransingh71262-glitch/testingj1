@@ -57,70 +57,85 @@ export default function App() {
       return;
     }
     setBusy(true);
-    await new Promise(r => setTimeout(r, 650));
+    try {
+      const API = "https://jaskaransingh123-ai-product-studio-engine.hf.space";
+      const uploadData = new FormData();
+      const blob = await (await fetch(preview)).blob();
+      uploadData.append("files", blob, file?.name || "product.png");
+      const uploadResponse = await fetch(API + "/gradio_api/upload", {
+        method: "POST",
+        body: uploadData
+      });
+      if (!uploadResponse.ok) throw new Error("Image upload failed.");
+      const uploaded = await uploadResponse.json();
+      const path = Array.isArray(uploaded) ? uploaded[0] : uploaded.path;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    const W = 1200, H = 1200;
-    canvas.width = W; canvas.height = H;
+      const promptText = [
+        prompt,
+        selectedStyle?.[2],
+        "professional commercial product photography",
+        "preserve the product identity and proportions",
+        background + " background",
+        lighting + " lighting",
+        "high detail, realistic materials"
+      ].join(", ");
 
-    const bg = selectedBg[2];
-    const gradient = ctx.createLinearGradient(0, 0, W, H);
-    gradient.addColorStop(0, bg);
-    gradient.addColorStop(1, lighting === "Neon" ? "#24143a" : "#08090b");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, W, H);
+      const callResponse = await fetch(API + "/gradio_api/call/generate", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          data: [
+            {path, meta: {_type: "gradio.FileData"}},
+            promptText,
+            0.35,
+            4
+          ]
+        })
+      });
+      if (!callResponse.ok) throw new Error("Generation request failed.");
+      const event = await callResponse.json();
 
-    if (lighting === "Softbox") {
-      const glow = ctx.createRadialGradient(600, 430, 40, 600, 430, 620);
-      glow.addColorStop(0, "rgba(255,255,255,.72)");
-      glow.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+      const stream = await fetch(API + "/gradio_api/call/generate/" + event.event_id);
+      if (!stream.ok) throw new Error("Generation queue failed.");
+      const reader = stream.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let output = null;
+
+      while (true) {
+        const {value, done} = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, {stream: true});
+        const chunks = buffer.split("\n\n");
+        buffer = chunks.pop() || "";
+        for (const chunk of chunks) {
+          const dataLine = chunk.split("\n").find(line => line.startsWith("data:"));
+          if (!dataLine) continue;
+          const payload = dataLine.slice(5).trim();
+          if (!payload || payload === "null") continue;
+          try {
+            const parsed = JSON.parse(payload);
+            if (Array.isArray(parsed) && parsed[0]) output = parsed[0];
+          } catch {}
+        }
+      }
+
+      const imagePath = output?.url || output?.path;
+      if (!imagePath) throw new Error("The AI engine returned no image.");
+      const imageUrl = imagePath.startsWith("http") ? imagePath : API + "/file=" + encodeURIComponent(imagePath);
+      const item = {
+        url: imageUrl,
+        style, background, lighting, prompt,
+        time: new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})
+      };
+      setResult(item);
+      setHistory(h => [item, ...h].slice(0, 6));
+    } catch (error) {
+      console.error(error);
+      alert("AI generation failed: " + error.message);
+    } finally {
+      setBusy(false);
     }
-    if (lighting === "Daylight") {
-      const glow = ctx.createRadialGradient(250, 200, 30, 250, 200, 650);
-      glow.addColorStop(0, "rgba(255,238,194,.8)");
-      glow.addColorStop(1, "rgba(255,238,194,0)");
-      ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
-    }
-    if (lighting === "Neon") {
-      const glow = ctx.createRadialGradient(900, 300, 10, 900, 300, 500);
-      glow.addColorStop(0, "rgba(110,72,255,.65)");
-      glow.addColorStop(1, "rgba(110,72,255,0)");
-      ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
-    }
-
-    const img = new Image();
-    img.onload = () => {
-      const maxW = 780, maxH = 720;
-      const scale = Math.min(maxW / img.width, maxH / img.height, 1);
-      const w = img.width * scale, h = img.height * scale;
-      const x = (W - w) / 2, y = 220 + (maxH - h) / 2;
-
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,.48)";
-      ctx.shadowBlur = 45;
-      ctx.shadowOffsetY = 30;
-      ctx.drawImage(img, x, y, w, h);
-      ctx.restore();
-
-      ctx.fillStyle = "rgba(255,255,255,.82)";
-      ctx.font = "600 18px Inter, Arial";
-      ctx.fillText(style.toUpperCase() + " / " + lighting.toUpperCase(), 58, 62);
-      ctx.fillStyle = "rgba(255,255,255,.46)";
-      ctx.font = "400 15px Inter, Arial";
-      ctx.fillText("AI PRODUCT STUDIO", 58, 91);
-      ctx.fillText(prompt.slice(0, 90), 58, 114);
-
-      canvas.toBlob(blob => {
-        const url = URL.createObjectURL(blob);
-        const item = { url, style, background, lighting, prompt, time: new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) };
-        setResult(item);
-        setHistory(h => [item, ...h].slice(0, 6));
-        setBusy(false);
-      }, "image/png", 1);
-    };
-    img.src = preview;
   };
 
   return (
