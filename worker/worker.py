@@ -1,15 +1,15 @@
 import os, time, base64, io, requests, torch
 from PIL import Image
-from diffusers import FluxPipeline
+from diffusers import FluxKontextPipeline
 
 BACKEND=os.environ["BACKEND_URL"].rstrip("/")
 SECRET=os.environ.get("WORKER_SECRET","")
-MODEL=os.environ.get("FLUX_MODEL","black-forest-labs/FLUX.1-schnell")
+MODEL=os.environ.get("FLUX_MODEL","black-forest-labs/FLUX.1-Kontext-dev")
 DEVICE="cuda" if torch.cuda.is_available() else "cpu"
 DTYPE=torch.bfloat16 if DEVICE=="cuda" else torch.float32
 
 print("Loading",MODEL,"on",DEVICE)
-pipe=FluxPipeline.from_pretrained(MODEL, torch_dtype=DTYPE)
+pipe=FluxKontextPipeline.from_pretrained(MODEL, torch_dtype=DTYPE)
 pipe.to(DEVICE)
 
 def headers():
@@ -28,12 +28,10 @@ while True:
         source=Image.open(io.BytesIO(img_r.content)).convert("RGB")
         prompt=job["prompt"]
         result=pipe(
+            image=source,
             prompt=prompt,
-            image=source if "image" in pipe.__class__.__name__.lower() else None,
-            num_inference_steps=4,
-            guidance_scale=3.5,
-            width=1024,
-            height=1024
+            num_inference_steps=28,
+            guidance_scale=3.5
         ).images[0]
         buf=io.BytesIO(); result.save(buf,format="PNG")
         payload={"imageBase64":base64.b64encode(buf.getvalue()).decode(),"mimeType":"image/png"}
