@@ -1,0 +1,10 @@
+{
+  "name": "F40 Digital Archive",
+  "short_name": "F40 Archive",
+  "description": "An interactive 3D digital archive exploring the Ferrari F40.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "lang": "en"
+}

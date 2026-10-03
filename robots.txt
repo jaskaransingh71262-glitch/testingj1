@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://testingj1-avny.vercel.app/sitemap.xml
