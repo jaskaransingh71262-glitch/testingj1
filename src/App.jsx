@@ -68,7 +68,7 @@ export default function App() {
         sleeping: "Waking AI engine...",
         building: "Starting AI engine..."
       };
-      const client = await Client.connect("Qwen/Qwen-Image-2.1", {
+      const client = await Client.connect("https://qwen-qwen-image-2-1.hf.space", {
         events: ["status"],
         status_callback: (s) => {
           if (s?.status && statusMessages[s.status]) {
@@ -127,7 +127,7 @@ export default function App() {
       setHistory(h => [item, ...h].slice(0, 6));
     } catch (error) {
       console.error(error);
-      alert("AI generation failed: " + (error?.message || "Unknown error"));
+      alert("AI generation failed. Open the browser console for the exact error.\n\n" + (error?.message || String(error) || "Unknown error"));
     } finally {
       setBusy(false);
     }
