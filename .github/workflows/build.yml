@@ -20,7 +20,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Install dependencies
         run: npm install
@@ -48,9 +47,25 @@ jobs:
           rm -rf hf-space
           git clone "https://user:${HF_TOKEN}@huggingface.co/spaces/jaskaransingh123/ai-product-studio" hf-space
 
-          find hf-space -mindepth 1 -maxdepth 1 ! -name .git ! -name README.md -exec rm -rf {} +
+          find hf-space -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
 
           cp -R dist/. hf-space/
+
+          cat > hf-space/README.md <<'EOF'
+---
+title: AI Product Studio
+emoji: 🎨
+colorFrom: purple
+colorTo: blue
+sdk: static
+app_file: index.html
+pinned: false
+---
+
+# AI Product Studio
+
+AI-powered product image creation studio.
+EOF
 
           cd hf-space
           git add -A
