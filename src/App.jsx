@@ -168,6 +168,20 @@ export default function App() {
         <div className="spec-grid">{specs.map(([n,u,l]) => <article key={l}><strong>{n}</strong><em>{u}</em><span>{l}</span></article>)}</div>
       </section>
 
+      <section className="facts" id="facts" aria-labelledby="f40-facts-title">
+        <div className="facts-label">FERRARI F40 / THE STORY</div>
+        <div className="facts-grid">
+          <div>
+            <h2 id="f40-facts-title">A ROAD CAR<br/><em>BUILT LIKE A<br/>STATEMENT.</em></h2>
+          </div>
+          <div className="facts-copy">
+            <p>The Ferrari F40 was introduced in 1987 to celebrate Ferrari's 40th anniversary. Its longitudinal 90-degree twin-turbo V8 produces 478 hp, while Ferrari lists a top speed of 324 km/h.</p>
+            <p>The F40's lightweight philosophy, composite bodywork and aerodynamic form made it one of the defining performance cars of its era. This interactive archive brings those details into a real-time 3D experience for the modern web.</p>
+            <div className="facts-source">SPECIFICATIONS: FERRARI OFFICIAL HISTORY / 1987 F40</div>
+          </div>
+        </div>
+      </section>
+
       <section className="studio" id="studio">
         <div className="studio-head"><span>03 / THE STUDIO</span><span>INTERACTIVE MATERIAL LAB</span></div>
         <div className="studio-grid">
