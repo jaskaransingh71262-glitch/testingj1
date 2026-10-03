@@ -30,7 +30,7 @@ server.registerTool(
   "workspace_info",
   {
     description: "Show the configured local workspace path.",
-    inputSchema: {}
+    inputSchema: z.object({})
   },
   async () => textResult(WORKSPACE)
 );
@@ -39,9 +39,9 @@ server.registerTool(
   "list_files",
   {
     description: "List files and directories inside the configured workspace.",
-    inputSchema: {
+    inputSchema: z.object({
       path: z.string().default(".").describe("Workspace-relative directory")
-    }
+    })
   },
   async ({ path: relativePath }) => {
     const target = resolveInsideWorkspace(relativePath);
@@ -57,9 +57,9 @@ server.registerTool(
   "read_file",
   {
     description: "Read a UTF-8 text file inside the configured workspace.",
-    inputSchema: {
+    inputSchema: z.object({
       path: z.string().min(1).describe("Workspace-relative file path")
-    }
+    })
   },
   async ({ path: relativePath }) => {
     const target = resolveInsideWorkspace(relativePath);
@@ -74,10 +74,10 @@ server.registerTool(
   "write_file",
   {
     description: "Create or replace a UTF-8 text file inside the configured workspace.",
-    inputSchema: {
+    inputSchema: z.object({
       path: z.string().min(1).describe("Workspace-relative file path"),
       content: z.string().describe("Complete file contents")
-    }
+    })
   },
   async ({ path: relativePath, content }) => {
     const target = resolveInsideWorkspace(relativePath);
@@ -109,11 +109,11 @@ server.registerTool(
   {
     description:
       "Run a development command with an argument array in the configured workspace. Shell interpretation is disabled. Commands that can modify or delete data require explicit allow_destructive=true.",
-    inputSchema: {
+    inputSchema: z.object({
       command: z.string().min(1).describe("Executable name, e.g. git, npm, dotnet"),
       args: z.array(z.string()).default([]).describe("Command arguments"),
       allow_destructive: z.boolean().default(false).describe("Explicitly allow destructive commands")
-    }
+    })
   },
   async ({ command, args, allow_destructive }) => {
     const destructive = new Set([
