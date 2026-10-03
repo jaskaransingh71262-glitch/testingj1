@@ -1,208 +1,193 @@
-import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { ContactShadows, Environment, Float, Html, OrbitControls, useGLTF } from "@react-three/drei";
-import * as THREE from "three";
-import "../enterprise.css";
+import React, { useMemo, useRef, useState } from "react";
 
-const MODEL_URL = "https://sceneview.github.io/models/platforms/ferrari_f40.glb";
-
-const specs = [
-  ["478", "HP", "Twin-turbo V8"],
-  ["324", "KM/H", "Top speed"],
-  ["1,100", "KG", "Dry weight"],
-  ["4.1", "SEC", "0—100 km/h"]
+const STYLES = [
+  ["Luxury", "Luxury editorial", "soft shadows, premium materials, high-end campaign"],
+  ["Ecommerce", "Clean ecommerce", "clean studio lighting, white seamless background"],
+  ["Lifestyle", "Lifestyle scene", "natural environment, realistic context, premium advertising"],
+  ["Minimal", "Minimal product", "simple composition, subtle gradient, precise lighting"],
 ];
-
-const hotspots = [
-  { p: [1.25, 0.35, 0.45], title: "WIDE STANCE", copy: "A low, aggressive footprint built around the F40 silhouette." },
-  { p: [-0.95, 0.42, 0.35], title: "TWIN TURBO V8", copy: "The engine is the centre of the story: compact, brutal and purposeful." },
-  { p: [0.15, 0.65, -1.2], title: "REAR WING", copy: "A defining piece of the aerodynamic profile." }
+const BACKGROUNDS = [
+  ["Studio", "Studio White", "#f4f1eb"],
+  ["Slate", "Slate", "#17191d"],
+  ["Sand", "Warm Sand", "#d9c3a5"],
+  ["Midnight", "Midnight", "#090d18"],
 ];
+const LIGHTING = ["Softbox", "Dramatic", "Daylight", "Neon"];
 
-function CameraDirector({ progress }) {
-  const ref = useRef();
-  useFrame((state) => {
-    const p = progress.current;
-    const target = new THREE.Vector3(
-      THREE.MathUtils.lerp(4.8, -4.2, p),
-      THREE.MathUtils.lerp(2.0, 1.0, p),
-      THREE.MathUtils.lerp(5.6, 4.2, p)
-    );
-    ref.current.position.lerp(target, 0.055);
-    ref.current.lookAt(
-      THREE.MathUtils.lerp(0, 0.25, p),
-      THREE.MathUtils.lerp(0.35, 0.15, p),
-      THREE.MathUtils.lerp(0, -0.15, p)
-    );
-    state.camera.position.copy(ref.current.position);
-    state.camera.quaternion.copy(ref.current.quaternion);
-  });
-  return <perspectiveCamera ref={ref} makeDefault fov={34} position={[4.8, 2, 5.6]} />;
-}
-
-function F40({ color, detail, progress }) {
-  const { scene } = useGLTF(MODEL_URL);
-  const clone = useMemo(() => scene.clone(true), [scene]);
-
-  useEffect(() => {
-    clone.traverse((obj) => {
-      if (!obj.isMesh) return;
-      obj.castShadow = true;
-      obj.receiveShadow = true;
-      const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
-      materials.forEach((mat) => {
-        if (!mat) return;
-        const name = (mat.name || obj.name || "").toLowerCase();
-        if (/paint|body|red|ferrari|car/.test(name)) {
-          mat.color.set(color);
-          mat.metalness = 0.72;
-          mat.roughness = 0.2;
-          mat.clearcoat = 1;
-          mat.clearcoatRoughness = 0.08;
-        }
-        if (/glass|window|windshield/.test(name)) {
-          mat.transparent = true;
-          mat.opacity = 0.72;
-          mat.roughness = 0.05;
-          mat.metalness = 0.35;
-        }
-      });
-    });
-  }, [clone, color]);
-
-  return (
-    <group scale={detail ? 1.15 : 1} rotation={[0, progress.current * Math.PI * 0.5, 0]}>
-      <primitive object={clone} />
-      {hotspots.map((h) => (
-        <Html key={h.title} position={h.p} center distanceFactor={7} style={{ pointerEvents: "none" }}>
-          <div className="hotspot"><span /><div><b>{h.title}</b><small>{h.copy}</small></div></div>
-        </Html>
-      ))}
-    </group>
-  );
-}
-
-function Showroom({ color, detail, progress }) {
-  return (
-    <Canvas dpr={[1, 1.75]} shadows gl={{ antialias: true, powerPreference: "high-performance" }}>
-      <color attach="background" args={["#050505"]} />
-      <fog attach="fog" args={["#050505", 9, 22]} />
-      <ambientLight intensity={0.35} />
-      <spotLight position={[4, 7, 5]} intensity={180} angle={0.45} penumbra={1} castShadow />
-      <spotLight position={[-5, 2, -3]} intensity={110} color="#e51b23" angle={0.5} penumbra={1} />
-      <pointLight position={[1, 1, 4]} intensity={40} color="#fff2dc" />
-      <Suspense fallback={<Html center><div className="loader">LOADING MACHINE</div></Html>}>
-        <Environment preset="city" environmentIntensity={0.75} />
-        <CameraDirector progress={progress} />
-        <Float speed={0.7} rotationIntensity={0.04} floatIntensity={0.08}>
-          <F40 color={color} detail={detail} progress={progress} />
-        </Float>
-        <ContactShadows position={[0, -0.72, 0]} opacity={0.5} scale={10} blur={2.8} far={4} />
-      </Suspense>
-      <OrbitControls enablePan={false} enableZoom={false} enableRotate />
-    </Canvas>
-  );
+function downloadCanvas(canvas, name) {
+  const link = document.createElement("a");
+  link.download = name;
+  link.href = canvas.toDataURL("image/png", 1);
+  link.click();
 }
 
 export default function App() {
-  const progress = useRef(0);
-  const [scrollPercent, setScrollPercent] = useState(0);
-  const [menu, setMenu] = useState(false);
-  const [color, setColor] = useState("#b80f17");
-  const [detail, setDetail] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState("");
+  const [style, setStyle] = useState("Luxury");
+  const [background, setBackground] = useState("Studio");
+  const [lighting, setLighting] = useState("Softbox");
+  const [prompt, setPrompt] = useState("Premium commercial product photography");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const [history, setHistory] = useState([]);
+  const canvasRef = useRef(null);
 
-  useEffect(() => {
-    const onScroll = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      const value = max ? window.scrollY / max : 0;
-      progress.current = value;
-      setScrollPercent(value);
+  const selectedStyle = useMemo(() => STYLES.find(x => x[0] === style), [style]);
+  const selectedBg = useMemo(() => BACKGROUNDS.find(x => x[0] === background), [background]);
+
+  const onFile = (next) => {
+    const f = next?.[0];
+    if (!f) return;
+    if (!f.type.startsWith("image/")) return;
+    if (f.size > 12 * 1024 * 1024) {
+      alert("Please choose an image smaller than 12 MB.");
+      return;
+    }
+    setFile(f);
+    setResult(null);
+    const reader = new FileReader();
+    reader.onload = e => setPreview(String(e.target.result));
+    reader.readAsDataURL(f);
+  };
+
+  const generate = async () => {
+    if (!preview) {
+      alert("Upload a product photo first.");
+      return;
+    }
+    setBusy(true);
+    await new Promise(r => setTimeout(r, 650));
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const W = 1200, H = 1200;
+    canvas.width = W; canvas.height = H;
+
+    const bg = selectedBg[2];
+    const gradient = ctx.createLinearGradient(0, 0, W, H);
+    gradient.addColorStop(0, bg);
+    gradient.addColorStop(1, lighting === "Neon" ? "#24143a" : "#08090b");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, W, H);
+
+    if (lighting === "Softbox") {
+      const glow = ctx.createRadialGradient(600, 430, 40, 600, 430, 620);
+      glow.addColorStop(0, "rgba(255,255,255,.72)");
+      glow.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+    }
+    if (lighting === "Daylight") {
+      const glow = ctx.createRadialGradient(250, 200, 30, 250, 200, 650);
+      glow.addColorStop(0, "rgba(255,238,194,.8)");
+      glow.addColorStop(1, "rgba(255,238,194,0)");
+      ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+    }
+    if (lighting === "Neon") {
+      const glow = ctx.createRadialGradient(900, 300, 10, 900, 300, 500);
+      glow.addColorStop(0, "rgba(110,72,255,.65)");
+      glow.addColorStop(1, "rgba(110,72,255,0)");
+      ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 780, maxH = 720;
+      const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+      const w = img.width * scale, h = img.height * scale;
+      const x = (W - w) / 2, y = 220 + (maxH - h) / 2;
+
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,.48)";
+      ctx.shadowBlur = 45;
+      ctx.shadowOffsetY = 30;
+      ctx.drawImage(img, x, y, w, h);
+      ctx.restore();
+
+      ctx.fillStyle = "rgba(255,255,255,.82)";
+      ctx.font = "600 18px Inter, Arial";
+      ctx.fillText(style.toUpperCase() + " / " + lighting.toUpperCase(), 58, 62);
+      ctx.fillStyle = "rgba(255,255,255,.46)";
+      ctx.font = "400 15px Inter, Arial";
+      ctx.fillText("AI PRODUCT STUDIO", 58, 91);
+      ctx.fillText(prompt.slice(0, 90), 58, 114);
+
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const item = { url, style, background, lighting, prompt, time: new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) };
+        setResult(item);
+        setHistory(h => [item, ...h].slice(0, 6));
+        setBusy(false);
+      }, "image/png", 1);
     };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    const timer = setTimeout(() => setLoaded(true), 900);
-    return () => { window.removeEventListener("scroll", onScroll); clearTimeout(timer); };
-  }, []);
-
-  const go = (id) => {
-    document.querySelector(id)?.scrollIntoView({ behavior: "smooth" });
-    setMenu(false);
+    img.src = preview;
   };
 
   return (
-    <div className="f40-site">
-      <div className="grain" />
-      <header className="topbar">
-        <button className="brand" onClick={() => go("#hero")}><b>F40</b><span>DIGITAL<br/>ARCHIVE</span></button>
-        <div className="top-center">MARANELLO <i>×</i> 1987</div>
-        <button className="menu-button" onClick={() => setMenu(!menu)}>{menu ? "CLOSE" : "MENU"} <span>☰</span></button>
-        {menu && <nav className="menu-panel">
-          <button onClick={() => go("#hero")}>00 / ARRIVAL</button>
-          <button onClick={() => go("#story")}>01 / THE MACHINE</button>
-          <button onClick={() => go("#data")}>02 / THE NUMBERS</button>
-          <button onClick={() => go("#studio")}>03 / THE STUDIO</button>
-        </nav>}
+    <div className="studio-app">
+      <header className="nav">
+        <div className="brand"><span className="brand-mark">AI</span><span>PRODUCT STUDIO</span></div>
+        <nav><a href="#create">CREATE</a><a href="#workflow">WORKFLOW</a><a href="#history">HISTORY</a></nav>
+        <span className="status"><i /> FREE MODE</span>
       </header>
-      <div className="progress-line"><span style={{ transform: `scaleX(${scrollPercent})` }} /></div>
 
-      <section className="hero" id="hero">
-        <div className="hero-canvas"><Showroom color={color} detail={detail} progress={progress} /></div>
-        <div className="hero-copy">
-          <small>FERRARI F40 / DIGITAL ARCHIVE 001</small>
-          <h1>THE<br/><em>ICON</em><br/>ARRIVES.</h1>
-          <p>A living 3D object. Drag it. Scroll around it. Change the light. Get closer.</p>
-          <button onClick={() => go("#story")}>ENTER THE MACHINE <b>↓</b></button>
-        </div>
-        <div className="hero-meta"><span>1987—1992</span><span>NATIVE WEBGL / GLB</span><span>REAL-TIME MATERIALS</span></div>
-        <div className="hero-number">40</div>
-      </section>
-
-      <section className="story" id="story">
-        <div className="story-intro"><span>01 / THE MACHINE</span><h2>NOT A<br/><i>POSTER.</i><br/>A PRESENCE.</h2><p>The model is now native WebGL, so the camera, materials, lighting and interaction belong to the experience.</p></div>
-        <div className="story-card"><div className="card-kicker">LIVE CONTROL</div><strong>SCROLL<br/>BECOMES<br/>CAMERA.</strong><small>Every movement through the page changes the machine's point of view.</small></div>
-      </section>
-
-      <section className="numbers" id="data">
-        <div className="numbers-head"><span>02 / THE NUMBERS</span><p>FOUR NUMBERS. ONE LEGEND.</p></div>
-        <div className="spec-grid">{specs.map(([n,u,l]) => <article key={l}><strong>{n}</strong><em>{u}</em><span>{l}</span></article>)}</div>
-      </section>
-
-      <section className="facts" id="facts" aria-labelledby="f40-facts-title">
-        <div className="facts-label">FERRARI F40 / THE STORY</div>
-        <div className="facts-grid">
+      <main>
+        <section className="hero">
           <div>
-            <h2 id="f40-facts-title">A ROAD CAR<br/><em>BUILT LIKE A<br/>STATEMENT.</em></h2>
+            <p className="eyebrow">AI PRODUCT PHOTOGRAPHY / 001</p>
+            <h1>Turn ordinary<br /><em>product photos</em><br />into campaigns.</h1>
+            <p className="hero-copy">Upload one product image. Choose a visual direction. Build a polished commercial composition in seconds.</p>
+            <a className="hero-cta" href="#create">START CREATING ↓</a>
           </div>
-          <div className="facts-copy">
-            <p>The Ferrari F40 was introduced in 1987 to celebrate Ferrari's 40th anniversary. Its longitudinal 90-degree twin-turbo V8 produces 478 hp, while Ferrari lists a top speed of 324 km/h.</p>
-            <p>The F40's lightweight philosophy, composite bodywork and aerodynamic form made it one of the defining performance cars of its era. This interactive archive brings those details into a real-time 3D experience for the modern web.</p>
-            <div className="facts-source">SPECIFICATIONS: FERRARI OFFICIAL HISTORY / 1987 F40</div>
+          <div className="hero-art">
+            <div className="orb" />
+            <div className="floating-card"><small>LIVE PREVIEW</small><strong>PRODUCT<br />CAMPAIGN</strong><span>LIGHT / COMPOSITION / STYLE</span></div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="studio" id="studio">
-        <div className="studio-head"><span>03 / THE STUDIO</span><span>INTERACTIVE MATERIAL LAB</span></div>
-        <div className="studio-grid">
-          <div className="studio-canvas"><Showroom color={color} detail={detail} progress={progress} /></div>
-          <div className="controls">
-            <small>CONFIGURE THE OBJECT</small>
-            <h2>MAKE IT<br/><em>YOURS.</em></h2>
-            <p>Native material control replaces the embed. Switch the body finish and inspect the sculpture at a closer scale.</p>
-            <div className="swatches">{["#b80f17","#111111","#e7e2d8","#153f55"].map(c => <button key={c} aria-label={c} style={{ background: c }} className={color === c ? "active" : ""} onClick={() => setColor(c)} />)}</div>
-            <button className={detail ? "detail active" : "detail"} onClick={() => setDetail(!detail)}>{detail ? "EXIT DETAIL VIEW" : "ENTER DETAIL VIEW"} <b>→</b></button>
-          </div>
-        </div>
-      </section>
+        <section className="workspace" id="create">
+          <aside className="panel">
+            <div className="panel-head"><span>01 / INPUT</span><b>LOCAL</b></div>
+            <label className="upload" onDragOver={e => e.preventDefault()} onDrop={e => {e.preventDefault(); onFile(e.dataTransfer.files)}} >
+              <input type="file" accept="image/*" onChange={e => onFile(e.target.files)} />
+              {preview ? <img src={preview} alt="Product preview" /> : <><strong>DROP PRODUCT PHOTO</strong><span>or click to browse · JPG / PNG / WEBP · 12 MB</span></>}
+            </label>
 
-      <section className="manifesto">
-        <div className="manifesto-word">F40</div>
-        <div className="manifesto-copy"><small>THE END OF THE ARCHIVE</small><h2>STILL<br/><em>UNFORGETTABLE.</em></h2><button onClick={() => go("#hero")}>REPLAY EXPERIENCE ↑</button></div>
-      </section>
-      {!loaded && <div className="boot"><strong>F40</strong><span>INITIALIZING DIGITAL ARCHIVE</span></div>}
+            <div className="field"><label>CAMPAIGN DIRECTION</label><div className="choice-grid">{STYLES.map(x => <button key={x[0]} className={style === x[0] ? "selected" : ""} onClick={() => setStyle(x[0])}><b>{x[0]}</b><span>{x[1]}</span></button>)}</div></div>
+
+            <div className="field"><label>BACKGROUND</label><div className="chips">{BACKGROUNDS.map(x => <button key={x[0]} className={background === x[0] ? "chip selected" : "chip"} onClick={() => setBackground(x[0])}><i style={{background:x[2]}} />{x[1]}</button>)}</div></div>
+
+            <div className="field"><label>LIGHTING</label><div className="chips">{LIGHTING.map(x => <button key={x} className={lighting === x ? "chip selected" : "chip"} onClick={() => setLighting(x)}>{x}</button>)}</div></div>
+
+            <div className="field"><label>CREATIVE DIRECTION</label><textarea value={prompt} onChange={e => setPrompt(e.target.value)} rows="3" placeholder="Describe the campaign..." /></div>
+
+            <button className="generate" onClick={generate} disabled={busy}>{busy ? "COMPOSING..." : "CREATE PRODUCT IMAGE"} <span>→</span></button>
+            <p className="engine-note">Free browser composer · no API key required · your source image stays in this browser.</p>
+          </aside>
+
+          <section className="preview-panel">
+            <div className="panel-head"><span>02 / CANVAS</span><b>{result ? "READY" : "WAITING FOR INPUT"}</b></div>
+            <div className="canvas-wrap">
+              {result ? <img className="result-image" src={result.url} alt="Generated product campaign" /> : <div className="empty"><div className="empty-icon">✦</div><h2>Your campaign<br /><em>appears here.</em></h2><p>Upload a product and create your first composition.</p></div>}
+            </div>
+            {result && <div className="result-bar"><span>{result.style} · {result.background} · {result.lighting}</span><button onClick={() => downloadCanvas(canvasRef.current, "ai-product-studio.png")}>DOWNLOAD PNG ↓</button></div>}
+            <canvas ref={canvasRef} className="hidden-canvas" />
+          </section>
+        </section>
+
+        <section className="workflow" id="workflow">
+          <p className="eyebrow">03 / WORKFLOW</p>
+          <h2>One photo.<br /><em>Many campaigns.</em></h2>
+          <div className="steps"><article><b>01</b><h3>UPLOAD</h3><p>Start with the product photo you already have.</p></article><article><b>02</b><h3>DIRECT</h3><p>Pick the mood, background, lighting and creative direction.</p></article><article><b>03</b><h3>CREATE</h3><p>Export a polished campaign image ready for iteration.</p></article></div>
+        </section>
+
+        <section className="history" id="history">
+          <div className="panel-head"><span>04 / RECENT OUTPUTS</span><b>{history.length} CREATED</b></div>
+          {history.length === 0 ? <p className="history-empty">Your generated campaigns will appear here during this session.</p> : <div className="history-grid">{history.map((x,i) => <button key={i} onClick={() => setResult(x)}><img src={x.url} alt="" /><span>{x.style} / {x.lighting}</span></button>)}</div>}
+        </section>
+      </main>
+
+      <footer><span>AI PRODUCT STUDIO</span><span>BUILD 001 / FREE MODE</span></footer>
     </div>
   );
 }
-
-useGLTF.preload(MODEL_URL);
