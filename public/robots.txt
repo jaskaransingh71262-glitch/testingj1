@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 
-# Add the deployed site's absolute sitemap URL here once the production domain is fixed.
-# Sitemap: https://YOUR-DOMAIN.example/sitemap.xml
+Sitemap: https://testingj1-avny.vercel.app/sitemap.xml
