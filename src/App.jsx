@@ -56,7 +56,8 @@ export default function App() {
     reader.readAsDataURL(f);
   };
 
-\n  const readGradioStream = async (response) => {
+
+  const readGradioStream = async (response) => {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
