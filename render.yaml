@@ -1,16 +1,13 @@
 services:
   - type: web
-    name: ai-product-studio-api
+    name: cinema-ai-api
     runtime: node
     rootDir: backend
     buildCommand: npm install
     startCommand: npm start
+    healthCheckPath: /health
     envVars:
-      - key: WORKER_SECRET
-        generateValue: true
-
-  - type: static
-    name: qwen-browser-ui
-    rootDir: qwen-browser/web
-    buildCommand: ""
-    staticPublishPath: .
+      - key: LUMAAI_API_KEY
+        sync: false
+      - key: LUMA_MODEL
+        value: ray-flash-2
