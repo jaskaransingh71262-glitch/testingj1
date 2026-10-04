@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import { chromium } from "playwright";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const app = express();
 const PORT = Number(process.env.PORT || 8787);
@@ -10,6 +12,8 @@ const HOST = process.env.BROWSER_HOST || "127.0.0.1";
 
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "15mb" }));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.use(express.static(path.join(__dirname, "web")));
 
 let browser;
 let page;
@@ -114,7 +118,7 @@ async function execute(action) {
   const p = await ensureBrowser();
   switch (action.action) {
     case "goto":
-      if (!/^https?:\\/\\//i.test(action.url || "")) throw new Error("Only http(s) URLs are allowed.");
+      if (!/^https?:\/\//i.test(action.url || "")) throw new Error("Only http(s) URLs are allowed.");
       await p.goto(action.url, { waitUntil: "domcontentloaded", timeout: 30000 });
       break;
     case "click":
@@ -165,7 +169,7 @@ app.get("/api/screenshot", async (_req, res) => {
 app.post("/api/navigate", async (req, res) => {
   try {
     const url = String(req.body?.url || "");
-    if (!/^https?:\\/\\//i.test(url)) return res.status(400).json({ error: "Enter a complete http(s) URL." });
+    if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: "Enter a complete http(s) URL." });
     const p = await ensureBrowser();
     await p.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
     res.json(await state());
