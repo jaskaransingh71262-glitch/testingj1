@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Qwen Local Browser</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;background:#080a0d;color:#eef2f6}button,input{font:inherit}header{padding:18px 24px;border-bottom:1px solid #252a31;display:flex;justify-content:space-between;align-items:center}.brand{font-weight:800;letter-spacing:.08em}.pill{font-size:12px;border:1px solid #303740;border-radius:99px;padding:7px 10px}.layout{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 70px)}aside{border-right:1px solid #252a31;padding:22px}.label{font-size:11px;color:#8993a0;letter-spacing:.12em;margin:18px 0 8px}input{width:100%;background:#10141a;border:1px solid #303740;color:#fff;border-radius:8px;padding:11px}button{background:#161b22;color:#fff;border:1px solid #343c47;border-radius:8px;padding:10px 12px;cursor:pointer}button:hover{border-color:#6d7785}.primary{width:100%;background:#e8edf2;color:#080a0d;border:0;font-weight:800}.row{display:flex;gap:8px}.row button{flex:1}.status{margin-top:14px;font-size:12px;line-height:1.5;color:#aeb7c2;white-space:pre-wrap}.main{padding:22px;display:flex;flex-direction:column;gap:14px}.toolbar{display:flex;gap:8px}.toolbar button{flex:0 0 auto}.screen{background:#11151b;border:1px solid #2b3139;border-radius:12px;overflow:hidden;min-height:600px;display:flex;align-items:center;justify-content:center}.screen img{width:100%;display:block}.empty{color:#66717e}.trace{border:1px solid #252a31;border-radius:10px;padding:12px;max-height:220px;overflow:auto;font-size:12px;color:#b9c2cc;white-space:pre-wrap}@media(max-width:850px){.layout{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid #252a31}.screen{min-height:350px}}
+</style>
+</head>
+<body>
+<header><div class="brand">QWEN LOCAL BROWSER</div><div id="pill" class="pill">checking local agent…</div></header>
+<div class="layout">
+<aside>
+<div class="label">LOCAL AGENT</div>
+<div class="row"><input id="endpoint" value="http://127.0.0.1:8787"><button onclick="health()">PING</button></div>
+<div class="label">NAVIGATE</div>
+<div class="row"><input id="url" value="https://www.google.com"><button onclick="navigate()">GO</button></div>
+<div class="label">AGENT TASK</div>
+<input id="goal" placeholder="e.g. Open Wikipedia and search for Ada Lovelace">
+<div style="height:8px"></div><button class="primary" id="run" onclick="runAgent()">RUN QWEN AGENT</button>
+<div class="label">MANUAL CONTROL</div>
+<div class="row"><button onclick="act({action:'back'})">←</button><button onclick="act({action:'press',key:'Escape'})">ESC</button><button onclick="act({action:'scroll',dy:700})">↓ SCROLL</button></div>
+<div class="status" id="status">Connecting…</div>
+<div class="label">TRACE</div><div class="trace" id="trace">No run yet.</div>
+</aside>
+<main class="main">
+<div class="toolbar"><button onclick="refreshScreen()">REFRESH SCREEN</button><button onclick="act({action:'press',key:'Enter'})">ENTER</button><button onclick="act({action:'press',key:'Tab'})">TAB</button></div>
+<div class="screen"><img id="screen" alt="Browser screenshot" style="display:none"><div class="empty" id="empty">Start the local agent to see the browser.</div></div>
+</main>
+</div>
+<script>
+const $=id=>document.getElementById(id);const api=()=>$('endpoint').value.replace(/\/$/,'');
+async function request(path,opt={}){const r=await fetch(api()+path,{...opt,headers:{'content-type':'application/json',...(opt.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'HTTP '+r.status);return d}
+async function health(){try{const d=await request('/api/health');$('pill').textContent=d.ollama?'LOCAL + OLLAMA READY':'LOCAL AGENT READY / OLLAMA OFF';$('status').textContent=JSON.stringify(d,null,2);await refreshScreen()}catch(e){$('pill').textContent='LOCAL AGENT OFF';$('status').textContent=e.message}}
+async function navigate(){try{const d=await request('/api/navigate',{method:'POST',body:JSON.stringify({url:$('url').value})});$('status').textContent=d.url+'\n'+d.title;await refreshScreen()}catch(e){$('status').textContent=e.message}}
+async function act(action){try{const d=await request('/api/action',{method:'POST',body:JSON.stringify({action})});$('status').textContent=d.url+'\n'+d.title;await refreshScreen()}catch(e){$('status').textContent=e.message}}
+async function refreshScreen(){try{const r=await fetch(api()+'/api/screenshot?x='+Date.now());if(!r.ok)throw new Error('screenshot unavailable');const b=await r.blob();$('screen').src=URL.createObjectURL(b);$('screen').style.display='block';$('empty').style.display='none'}catch(e){}}
+async function runAgent(){const b=$('run');b.disabled=true;b.textContent='QWEN IS WORKING…';$('trace').textContent='Running…';try{const d=await request('/api/agent',{method:'POST',body:JSON.stringify({goal:$('goal').value})});$('trace').textContent=JSON.stringify(d.steps||d,null,2);$('status').textContent=(d.status||'finished')+(d.reason?'\n'+d.reason:'');await refreshScreen()}catch(e){$('trace').textContent=e.message;$('status').textContent=e.message}finally{b.disabled=false;b.textContent='RUN QWEN AGENT'}}
+health();setInterval(refreshScreen,4000);
+</script>
+</body>
+</html>
