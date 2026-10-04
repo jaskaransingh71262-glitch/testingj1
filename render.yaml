@@ -8,3 +8,23 @@ services:
     envVars:
       - key: WORKER_SECRET
         generateValue: true
+
+  - type: web
+    name: qwen-local-browser-agent
+    runtime: node
+    rootDir: qwen-browser
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: OLLAMA_URL
+        value: http://127.0.0.1:11434
+      - key: OLLAMA_MODEL
+        value: qwen3-vl:2b
+    # This service is intentionally not the model host. Ollama must stay on your Mac.
+    # Use the static UI below to control the Mac-local agent.
+
+  - type: static
+    name: qwen-browser-ui
+    rootDir: qwen-browser/web
+    buildCommand: ""
+    staticPublishPath: .
