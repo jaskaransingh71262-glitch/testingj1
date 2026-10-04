@@ -1,5 +1,5 @@
 import{useState}from"react";import"../enterprise.css";
-const API_BASE=(import.meta.env.VITE_API_BASE_URL||"").replace(/\/$/,"");
+const API_BASE="https://testingj1-3.onrender.com";
 const api=(path)=>API_BASE+path;
 const demo=[["Opening Image","Wide establishing shot"],["First Discovery","Medium tracking shot"],["The Hook","Close-up"]];
 const make=(s)=>demo.map(([title,shot],i)=>({id:i+1,title,shot,duration:"5s",prompt:`Cinematic ${shot.toLowerCase()} for: "${s}". Premium feature-film cinematography, realistic production design, motivated lighting, natural motion, subtle film grain, anamorphic lens characteristics, coherent visual style.`}));
